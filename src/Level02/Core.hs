@@ -199,5 +199,5 @@ app request callback =
 runApp :: IO ()
 runApp =
   do
-    putStrLn $ "\n Servet accessible at http://localhost:3000/ \n"
+    putStrLn $ "\n Server accessible at http://localhost:3000/ \n"
     run 3000 app
