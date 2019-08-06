@@ -1,24 +1,47 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Level02.Core (runApp, app) where
 
-import           Network.Wai              (Application, Request, Response,
-                                           pathInfo, requestMethod, responseLBS,
-                                           strictRequestBody)
+import           Network.Wai              ( Application
+                                          , Request
+                                          , Response
+                                          , pathInfo
+                                          , requestMethod
+                                          , responseLBS
+                                          , strictRequestBody
+                                          )
+
 import           Network.Wai.Handler.Warp (run)
 
-import           Network.HTTP.Types       (Status, hContentType, status200,
-                                           status400, status404)
+import           Network.HTTP.Types       ( Status
+                                          , hContentType
+                                          , status200
+                                          , status400
+                                          , status404
+                                          )
 
 import qualified Data.ByteString.Lazy     as LBS
 
-import           Data.Either              (either)
+import           Data.Either              ( Either(..)
+                                          , either
+                                          )
 
-import           Data.Text                (Text)
-import           Data.Text.Encoding       (decodeUtf8)
+import           Data.Text                ( Text
+                                          , empty,
+                                          append)
 
-import           Level02.Types            (ContentType, Error, RqType,
-                                           mkCommentText, mkTopic,
-                                           renderContentType)
+import           Data.Text.Encoding       ( decodeUtf8
+                                          , encodeUtf8
+                                          )
+
+import           Level02.Types            ( ContentType(..)
+                                          , Error(..)
+                                          , RqType(..)
+                                          , mkCommentText
+                                          , mkTopic
+                                          , getTopic
+                                          , getCommentText
+                                          , renderContentType
+                                          )
 
 -- |-------------------------------------------|
 -- |- Don't start here, go to Level02.Types!  -|
@@ -30,29 +53,31 @@ mkResponse
   -> ContentType
   -> LBS.ByteString
   -> Response
-mkResponse =
-  error "mkResponse not implemented"
+mkResponse status contentType =
+  responseLBS
+    status
+    [("Content-Type", renderContentType contentType)]
 
 resp200
   :: ContentType
   -> LBS.ByteString
   -> Response
 resp200 =
-  error "resp200 not implemented"
+  mkResponse status200
 
 resp404
   :: ContentType
   -> LBS.ByteString
   -> Response
 resp404 =
-  error "resp404 not implemented"
+  mkResponse status404
 
 resp400
   :: ContentType
   -> LBS.ByteString
   -> Response
 resp400 =
-  error "resp400 not implemented"
+  mkResponse status400
 
 -- |----------------------------------------------------------------------------------
 -- These next few functions will take raw request information and construct         --
@@ -68,23 +93,28 @@ mkAddRequest
   :: Text
   -> LBS.ByteString
   -> Either Error RqType
-mkAddRequest =
-  error "mkAddRequest not implemented"
+mkAddRequest topic comment =
+  AddRq <$> mkTopic topic <*> mkCommentTextFromLBS comment
   where
     -- This is a helper function to assist us in going from a Lazy ByteString, to a Strict Text
-    lazyByteStringToStrictText =
-      decodeUtf8 . LBS.toStrict
+    mkCommentTextFromLBS =
+      mkCommentText . decodeUtf8 . LBS.toStrict
 
 mkViewRequest
   :: Text
   -> Either Error RqType
 mkViewRequest =
-  error "mkViewRequest not implemented"
+  (ViewRq <$>) . mkTopic
 
 mkListRequest
   :: Either Error RqType
 mkListRequest =
-  error "mkListRequest not implemented"
+  Right ListRq
+
+mkUndefinedRequestRequest
+  :: Either Error a
+mkUndefinedRequestRequest =
+  Left UndefinedRequest
 
 -- |----------------------------------
 -- end of RqType creation functions --
@@ -93,19 +123,29 @@ mkListRequest =
 mkErrorResponse
   :: Error
   -> Response
-mkErrorResponse =
-  error "mkErrorResponse not implemented"
+mkErrorResponse EmptyTopic =
+  resp400  PlainText "Empty Topic"
+mkErrorResponse EmptyCommentText =
+  resp400 PlainText "Empty Comment Text"
+mkErrorResponse UndefinedRequest =
+  resp404 PlainText "Undefined Request"
 
 -- | Use our ``RqType`` helpers to write a function that will take the input
 -- ``Request`` from the Wai library and turn it into something our application
 -- cares about.
 mkRequest
   :: Request
-  -> IO ( Either Error RqType )
-mkRequest =
-  -- Remembering your pattern-matching skills will let you implement the entire
-  -- specification in this function.
-  error "mkRequest not implemented"
+  -> IO (Either Error RqType)
+mkRequest r =
+  case (pathInfo r, requestMethod r) of
+    ([t, "add"], "POST") ->
+      mkAddRequest t <$> strictRequestBody r
+    ([t, "view"], "GET") ->
+      pure $ mkViewRequest t
+    (["list"], "GET") ->
+      pure mkListRequest
+    _ ->
+      pure mkUndefinedRequestRequest
 
 -- | If we find that we need more information to handle a request, or we have a
 -- new type of request that we'd like to handle then we update the ``RqType``
@@ -121,14 +161,41 @@ mkRequest =
 handleRequest
   :: RqType
   -> Either Error Response
-handleRequest =
-  error "handleRequest not implemented"
+handleRequest (AddRq topic comment) =
+  Right $
+    resp200
+      PlainText
+      (LBS.fromStrict . encodeUtf8 $
+        "Added topic/comment: "
+        `append` getTopic topic
+        `append` "/"
+        `append` getCommentText comment
+        )
+handleRequest (ViewRq topic) =
+  Right $
+    resp200
+      PlainText
+      (LBS.fromStrict . encodeUtf8 $
+        "Viewed topic: "
+        `append` getTopic topic
+        )
+handleRequest ListRq =
+  Right $
+    resp200
+      PlainText
+      "Listed Topics"
 
 -- | Reimplement this function using the new functions and ``RqType`` constructors as a guide.
 app
   :: Application
-app =
-  error "app not reimplemented"
+app request callback =
+  do
+    request' <- mkRequest request
+    let response = either mkErrorResponse id (request' >>= handleRequest)
+    callback response
 
 runApp :: IO ()
-runApp = run 3000 app
+runApp =
+  do
+    putStrLn $ "\n Servet accessible at http://localhost:3000/ \n"
+    run 3000 app
