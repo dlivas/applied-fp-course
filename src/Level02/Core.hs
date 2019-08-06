@@ -25,9 +25,7 @@ import           Data.Either              ( Either(..)
                                           , either
                                           )
 
-import           Data.Text                ( Text
-                                          , empty,
-                                          append)
+import qualified Data.Text                as T
 
 import           Data.Text.Encoding       ( decodeUtf8
                                           , encodeUtf8
@@ -90,7 +88,7 @@ resp400 =
 --------------------------------------------------------------------------------------
 
 mkAddRequest
-  :: Text
+  :: T.Text
   -> LBS.ByteString
   -> Either Error RqType
 mkAddRequest topic comment =
@@ -101,7 +99,7 @@ mkAddRequest topic comment =
       mkCommentText . decodeUtf8 . LBS.toStrict
 
 mkViewRequest
-  :: Text
+  :: T.Text
   -> Either Error RqType
 mkViewRequest =
   (ViewRq <$>) . mkTopic
@@ -166,18 +164,22 @@ handleRequest (AddRq topic comment) =
     resp200
       PlainText
       (LBS.fromStrict . encodeUtf8 $
-        "Added topic/comment: "
-        `append` getTopic topic
-        `append` "/"
-        `append` getCommentText comment
+        T.concat
+          [ "Added topic/comment: "
+          , getTopic topic
+          , " / "
+          , getCommentText comment
+          ]
         )
 handleRequest (ViewRq topic) =
   Right $
     resp200
       PlainText
       (LBS.fromStrict . encodeUtf8 $
-        "Viewed topic: "
-        `append` getTopic topic
+        T.concat
+          [ "Viewed topic: "
+          , getTopic topic
+          ]
         )
 handleRequest ListRq =
   Right $
