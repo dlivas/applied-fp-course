@@ -62,19 +62,19 @@ main = defaultMain $ testGroup "Applied FP Course - Tests"
 
     , testWai Core.app "Add Topic" $
         do
-            resp <- post "fudge/add" "what a great fudge!"
-            assertStatus' HTTP.status200 resp
-            assertBody "topic/comment: fudge / what a great fudge!" resp
+            response <- post "fudge/add" "what a great fudge!"
+            assertStatus' HTTP.status200 response
+            assertBody "topic/comment: fudge / what a great fudge!" response
 
     , testWai Core.app "Empty Input" $
         do
-            resp <- post "fudge/add" ""
-            assertStatus' HTTP.status400 resp
-            assertBody "Empty Comment Text" resp
+            response <- post "fudge/add" ""
+            assertStatus' HTTP.status400 response
+            assertBody "Empty Comment Text" response
     
     , testWai Core.app "Undefined Request" $
         do
-            resp <- post "fudge/remove" ""
-            assertStatus' HTTP.status404 resp
-            assertBody "Undefined Request" resp
+            response <- post "fudge/remove" ""
+            assertStatus' HTTP.status404 response
+            assertBody "Undefined Request" response
     ]
