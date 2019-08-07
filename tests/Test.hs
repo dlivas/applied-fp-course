@@ -48,12 +48,27 @@ import qualified Level02.Core       as Core
 
 main :: IO ()
 main = defaultMain $ testGroup "Applied FP Course - Tests"
+    [ testWai Core.app "List Topics" $
+        do
+            response <- get "list"
+            assertStatus' HTTP.status200 response
+            assertBody "Listed Topics" response
+  
+    , testWai Core.app "View Topic" $
+        do
+            response <- get "fudge/view"
+            assertStatus' HTTP.status200 response
+            assertBody "topic: fudge" response
 
-  [ testWai Core.app "List Topics" $
-      get "fudge/view" >>= assertStatus' HTTP.status200
+    , testWai Core.app "Add Topic" $
+        do
+            resp <- post "fudge/add" "what a great fudge!"
+            assertStatus' HTTP.status200 resp
+            assertBody "topic/comment: fudge / what a great fudge!" resp
 
-  , testWai Core.app "Empty Input" $ do
-      resp <- post "fudge/add" ""
-      assertStatus' HTTP.status400 resp
-      assertBody "Empty Comment Text" resp
-  ]
+    , testWai Core.app "Empty Input" $
+        do
+            resp <- post "fudge/add" ""
+            assertStatus' HTTP.status400 resp
+            assertBody "Empty Comment Text" resp
+    ]

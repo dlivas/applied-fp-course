@@ -165,7 +165,7 @@ handleRequest (AddRq topic comment) =
       PlainText
       (LBS.fromStrict . encodeUtf8 $
         T.concat
-          [ "Added topic/comment: "
+          [ "topic/comment: "
           , getTopic topic
           , " / "
           , getCommentText comment
@@ -177,7 +177,7 @@ handleRequest (ViewRq topic) =
       PlainText
       (LBS.fromStrict . encodeUtf8 $
         T.concat
-          [ "Viewed topic: "
+          [ "topic: "
           , getTopic topic
           ]
         )
