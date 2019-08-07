@@ -71,4 +71,10 @@ main = defaultMain $ testGroup "Applied FP Course - Tests"
             resp <- post "fudge/add" ""
             assertStatus' HTTP.status400 resp
             assertBody "Empty Comment Text" resp
+    
+    , testWai Core.app "Undefined Request" $
+        do
+            resp <- post "fudge/remove" ""
+            assertStatus' HTTP.status404 resp
+            assertBody "Undefined Request" resp
     ]
