@@ -53,7 +53,7 @@ main = defaultMain $ testGroup "Applied FP Course - Tests"
             response <- get "list"
             assertStatus' HTTP.status200 response
             assertBody "Listed Topics" response
-  
+
     , testWai Core.app "View Topic" $
         do
             response <- get "fudge/view"
@@ -71,7 +71,7 @@ main = defaultMain $ testGroup "Applied FP Course - Tests"
             response <- post "fudge/add" ""
             assertStatus' HTTP.status400 response
             assertBody "Empty Comment Text" response
-    
+
     , testWai Core.app "Undefined Request" $
         do
             response <- post "fudge/remove" ""
