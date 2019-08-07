@@ -190,11 +190,11 @@ handleRequest ListRq =
 -- | Reimplement this function using the new functions and ``RqType`` constructors as a guide.
 app
   :: Application
-app request callback =
+app request respond =
   do
     request' <- mkRequest request
-    let response = either mkErrorResponse id (request' >>= handleRequest)
-    callback response
+    let response = either mkErrorResponse id $ request' >>= handleRequest
+    respond response
 
 runApp :: IO ()
 runApp =
