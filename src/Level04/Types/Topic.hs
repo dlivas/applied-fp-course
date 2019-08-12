@@ -8,7 +8,7 @@ module Level04.Types.Topic
 import           Waargonaut.Encode          (Encoder)
 import qualified Waargonaut.Encode          as E
 
-import           Data.Functor.Contravariant (contramap)
+import           Data.Functor.Contravariant ((>$<))
 import           Data.Text                  (Text)
 
 import           Level04.Types.Error        (Error (EmptyTopic), nonEmptyText)
@@ -61,4 +61,4 @@ getTopic (Topic t) =
 --
 encodeTopic :: Applicative f => Encoder f Topic
 encodeTopic = -- Try using 'contramap' and 'E.text'
-  error "topic JSON encoder not implemented"
+  getTopic >$< E.text

@@ -32,13 +32,26 @@ import           Database.SQLite.SimpleErrors.Types (SQLiteResponse)
 import           Waargonaut.Encode                  (Encoder')
 import qualified Waargonaut.Encode                  as E
 
-import           Level04.Conf                       (Conf, firstAppConfig)
+import           Level04.Conf                       ( Conf
+                                                    , dbFilePath
+                                                    , firstAppConfig
+                                                    )
+
 import qualified Level04.DB                         as DB
 import           Level04.Types                      (ContentType (JSON, PlainText),
-                                                     Error (EmptyCommentText, EmptyTopic, UnknownRoute),
+                                                     Error
+                                                      ( EmptyCommentText
+                                                      , EmptyTopic
+                                                      , UnknownRoute
+                                                      , DBError
+                                                      ),
                                                      RqType (AddRq, ListRq, ViewRq),
                                                      mkCommentText, mkTopic,
                                                      renderContentType)
+
+import           Data.Bifunctor                     ( first
+                                                    , second
+                                                    )
 
 -- Our start-up is becoming more complicated and could fail in new and
 -- interesting ways. But we also want to be able to capture these errors in a
@@ -48,7 +61,15 @@ data StartUpError
   deriving Show
 
 runApp :: IO ()
-runApp = error "runApp needs re-implementing"
+runApp =
+  do
+    dbData <- prepareAppReqs
+    case dbData of
+      Left err ->
+        putStrLn $ show err
+      Right fappDB ->
+        -- putStrLn $ "\n Server accessible at http://localhost:3000/ \n"
+        run (3000 :: Int) (app fappDB)
 
 -- We need to complete the following steps to prepare our app requirements:
 --
@@ -60,7 +81,7 @@ runApp = error "runApp needs re-implementing"
 prepareAppReqs
   :: IO ( Either StartUpError DB.FirstAppDB )
 prepareAppReqs =
-  error "prepareAppReqs not implemented"
+  first DBInitErr <$> DB.initDB (dbFilePath firstAppConfig)
 
 -- | Some helper functions to make our lives a little more DRY.
 mkResponse
@@ -186,3 +207,5 @@ mkErrorResponse EmptyCommentText =
   resp400 PlainText "Empty Comment"
 mkErrorResponse EmptyTopic =
   resp400 PlainText "Empty Topic"
+mkErrorResponse DBError =
+  resp400 PlainText "DB Error"
