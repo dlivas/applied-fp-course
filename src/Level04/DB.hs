@@ -1,28 +1,44 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-unused-matches #-}
 module Level04.DB
-  ( FirstAppDB (FirstAppDB)
+  ( FirstAppDB(FirstAppDB)
   , initDB
   , closeDB
   , addCommentToTopic
   , getComments
   , getTopics
   , deleteTopic
-  ) where
+  )
+where
 
-import           Data.Text                          (Text)
-import qualified Data.Text                          as Text
+import           Data.Text                      ( Text )
+import qualified Data.Text                     as Text
 
-import           Data.Time                          (getCurrentTime)
+import           Data.Time                      ( getCurrentTime )
 
-import           Database.SQLite.Simple             (Connection, Query (Query))
-import qualified Database.SQLite.Simple             as Sql
+import           Data.Bifunctor                 ( first
+                                                , second
+                                                )
 
-import qualified Database.SQLite.SimpleErrors       as Sql
-import           Database.SQLite.SimpleErrors.Types (SQLiteResponse)
+import           Database.SQLite.Simple         ( Connection
+                                                , Query(Query)
+                                                )
+import qualified Database.SQLite.Simple        as Sql
 
-import           Level04.Types                      (Comment, CommentText,
-                                                     Error, Topic)
+import qualified Database.SQLite.SimpleErrors  as Sql
+import           Database.SQLite.SimpleErrors.Types
+                                                ( SQLiteResponse )
+
+import           Level04.Types                  ( Comment
+                                                , CommentText
+                                                , mkTopic
+                                                , mkCommentText
+                                                , getTopic
+                                                , getCommentText
+                                                , fromDBComment
+                                                , Error(..)
+                                                , Topic
+                                                )
 
 -- ------------------------------------------------------------------------|
 -- You'll need the documentation for sqlite-simple ready for this section! |
@@ -41,24 +57,31 @@ data FirstAppDB = FirstAppDB
 
 -- Quick helper to pull the connection and close it down.
 closeDB
-  :: FirstAppDB
-  -> IO ()
-closeDB =
-  error "closeDB not implemented"
+  :: FirstAppDB -> IO ()
+closeDB = Sql.close . dbConn
 
 -- Given a `FilePath` to our SQLite DB file, initialise the database and ensure
 -- our Table is there by running a query to create it, if it doesn't exist
 -- already.
 initDB
   :: FilePath
-  -> IO ( Either SQLiteResponse FirstAppDB )
+  -> IO (Either SQLiteResponse FirstAppDB)
 initDB fp =
-  error "initDB not implemented"
-  where
+  let dbAction = do
+        connection <- Sql.open fp
+        Sql.execute_ connection createTableQ
+        return $ FirstAppDB connection
+  in  Sql.runDBAction dbAction
+ where
   -- Query has an `IsString` instance so string literals like this can be
   -- converted into a `Query` type when the `OverloadedStrings` language
   -- extension is enabled.
-    createTableQ = "CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, topic TEXT, comment TEXT, time TEXT)"
+  createTableQ
+    = "CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, topic TEXT, comment TEXT, time TEXT)"
+
+runDBAction' :: (a -> Either Error b) -> IO a -> IO (Either Error b)
+runDBAction' action dbAction =
+   (>>= action) . first DBError <$> Sql.runDBAction dbAction
 
 -- Note that we don't store the `Comment` in the DB, it is the type we build
 -- to send to the outside world. We will be loading our `DBComment` type from
@@ -74,42 +97,52 @@ getComments
   :: FirstAppDB
   -> Topic
   -> IO (Either Error [Comment])
-getComments =
-  let
-    sql = "SELECT id,topic,comment,time FROM comments WHERE topic = ?"
-  -- There are several possible implementations of this function. Particularly
-  -- there may be a trade-off between deciding to throw an Error if a DBComment
-  -- cannot be converted to a Comment, or simply ignoring any DBComment that is
-  -- not valid.
+getComments app topic =
+  let sql = "SELECT id,topic,comment,time FROM comments WHERE topic = ?"
+      -- There are several possible implementations of this function. Particularly
+      -- there may be a trade-off between deciding to throw an Error if a DBComment
+      -- cannot be converted to a Comment, or simply ignoring any DBComment that is
+      -- not valid.
   in
-    error "getComments not implemented"
+    runDBAction'
+      (traverse fromDBComment)
+      (Sql.query (dbConn app) sql (Sql.Only (getTopic topic)))
 
 addCommentToTopic
   :: FirstAppDB
   -> Topic
   -> CommentText
   -> IO (Either Error ())
-addCommentToTopic =
+addCommentToTopic app topic comment =
   let
     sql = "INSERT INTO comments (topic,comment,time) VALUES (?,?,?)"
   in
-    error "addCommentToTopic not implemented"
+    getCurrentTime
+      >>=
+        \t ->
+          runDBAction'
+            pure
+            $ Sql.execute (dbConn app) sql (getTopic topic, getCommentText comment, t)
 
 getTopics
   :: FirstAppDB
   -> IO (Either Error [Topic])
-getTopics =
+getTopics app =
   let
     sql = "SELECT DISTINCT topic FROM comments"
   in
-    error "getTopics not implemented"
+    runDBAction'
+      (traverse (mkTopic . Sql.fromOnly))
+      $ Sql.query_ (dbConn app) sql
 
 deleteTopic
   :: FirstAppDB
   -> Topic
   -> IO (Either Error ())
-deleteTopic =
+deleteTopic app topic =
   let
     sql = "DELETE FROM comments WHERE topic = ?"
   in
-    error "deleteTopic not implemented"
+    runDBAction'
+      return
+      $ Sql.execute (dbConn app) sql (Sql.Only (getTopic topic))

@@ -26,6 +26,7 @@ import           Data.Either                        (Either (Left, Right),
 import           Data.Semigroup                     ((<>))
 import           Data.Text                          (Text)
 import           Data.Text.Encoding                 (decodeUtf8)
+import qualified Data.Text                          as T
 
 import           Database.SQLite.SimpleErrors.Types (SQLiteResponse)
 
@@ -38,16 +39,15 @@ import           Level04.Conf                       ( Conf
                                                     )
 
 import qualified Level04.DB                         as DB
-import           Level04.Types                      (ContentType (JSON, PlainText),
-                                                     Error
-                                                      ( EmptyCommentText
-                                                      , EmptyTopic
-                                                      , UnknownRoute
-                                                      , DBError
-                                                      ),
-                                                     RqType (AddRq, ListRq, ViewRq),
-                                                     mkCommentText, mkTopic,
-                                                     renderContentType)
+import           Level04.Types                      ( ContentType (JSON, PlainText)
+                                                    , Error(..)
+                                                    , RqType (AddRq, ListRq, ViewRq)
+                                                    , mkCommentText
+                                                    , mkTopic
+                                                    , renderContentType
+                                                    , encodeComment
+                                                    , encodeTopic
+                                                    )
 
 import           Data.Bifunctor                     ( first
                                                     , second
@@ -66,10 +66,11 @@ runApp =
     dbData <- prepareAppReqs
     case dbData of
       Left err ->
-        putStrLn $ show err
+        print err
       Right fappDB ->
-        -- putStrLn $ "\n Server accessible at http://localhost:3000/ \n"
-        run (3000 :: Int) (app fappDB)
+        do
+          print "Server accessible at http://localhost:3000/"
+          run (3000 :: Int) (app fappDB)
 
 -- We need to complete the following steps to prepare our app requirements:
 --
@@ -126,8 +127,7 @@ resp200Json
   -> a
   -> Response
 resp200Json e =
-  mkResponse status200 JSON .
-  E.simplePureEncodeNoSpaces e
+  mkResponse status200 JSON . E.simplePureEncodeNoSpaces e
 
 -- |
 app
@@ -158,12 +158,15 @@ handleRequest
   :: DB.FirstAppDB
   -> RqType
   -> IO (Either Error Response)
-handleRequest _db (AddRq _ _) =
-  (resp200 PlainText "Success" <$) <$> error "AddRq handler not implemented"
-handleRequest _db (ViewRq _)  =
-  error "ViewRq handler not implemented"
-handleRequest _db ListRq      =
-  error "ListRq handler not implemented"
+handleRequest _db (AddRq topic comment) =
+  second (const (resp200 PlainText "Success"))
+  <$> DB.addCommentToTopic _db topic comment
+handleRequest _db (ViewRq topic) =
+  (second . resp200Json . E.list $ encodeComment)
+  <$> DB.getComments _db topic
+handleRequest _db ListRq =
+  second (resp200Json (E.list encodeTopic))
+  <$> (DB.getTopics _db)
 
 mkRequest
   :: Request
@@ -171,13 +174,17 @@ mkRequest
 mkRequest rq =
   case ( pathInfo rq, requestMethod rq ) of
     -- Commenting on a given topic
-    ( [t, "add"], "POST" ) -> mkAddRequest t <$> strictRequestBody rq
+    ( [t, "add"], "POST" ) ->
+      mkAddRequest t <$> strictRequestBody rq
     -- View the comments on a given topic
-    ( [t, "view"], "GET" ) -> pure ( mkViewRequest t )
+    ( [t, "view"], "GET" ) ->
+      pure ( mkViewRequest t )
     -- List the current topics
-    ( ["list"], "GET" )    -> pure mkListRequest
+    ( ["list"], "GET" )    ->
+      pure mkListRequest
     -- Finally we don't care about any other requests so throw your hands in the air
-    _                      -> pure ( Left UnknownRoute )
+    _                      ->
+      pure ( Left UnknownRoute )
 
 mkAddRequest
   :: Text
@@ -207,5 +214,5 @@ mkErrorResponse EmptyCommentText =
   resp400 PlainText "Empty Comment"
 mkErrorResponse EmptyTopic =
   resp400 PlainText "Empty Topic"
-mkErrorResponse DBError =
+mkErrorResponse (DBError _) =
   resp400 PlainText "DB Error"

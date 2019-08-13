@@ -14,6 +14,8 @@ module Level04.Types
   , getCommentText
   , renderContentType
   , fromDBComment
+  , encodeComment
+  , encodeTopic
   ) where
 
 import           GHC.Generics               (Generic)
@@ -114,10 +116,9 @@ fromDBComment (DBComment cid topic comment time) =
   --   (_, _) ->
   --     Left DBError
   do
-    t <- mkTopic topic
-    c <- mkCommentText comment
-    return $ Comment (CommentId cid) t c time
-
+    topic' <- mkTopic topic
+    comment' <- mkCommentText comment
+    return $ Comment (CommentId cid) topic' comment' time
 
 data RqType
   = AddRq Topic CommentText
