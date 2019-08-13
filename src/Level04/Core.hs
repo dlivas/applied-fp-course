@@ -162,7 +162,7 @@ handleRequest _db (AddRq topic comment) =
   second (const (resp200 PlainText "Success"))
   <$> DB.addCommentToTopic _db topic comment
 handleRequest _db (ViewRq topic) =
-  (second . resp200Json . E.list $ encodeComment)
+  second (resp200Json (E.list encodeComment))
   <$> DB.getComments _db topic
 handleRequest _db ListRq =
   second (resp200Json (E.list encodeTopic))

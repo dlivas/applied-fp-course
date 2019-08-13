@@ -110,11 +110,11 @@ fromDBComment
   :: DBComment
   -> Either Error Comment
 fromDBComment (DBComment cid topic comment time) =
-  -- case (mkTopic topic, mkCommentText comment) of
-  --   (Right t, Right c) ->
-  --     Right $ Comment (CommentId cid) t c time
-  --   (_, _) ->
-  --     Left DBError
+  -- mkTopic topic >>=
+  --   \topic' ->
+  --     mkCommentText comment >>=
+  --       \comment' ->
+  --         return $ Comment (CommentId cid) topic' comment' time
   do
     topic' <- mkTopic topic
     comment' <- mkCommentText comment
