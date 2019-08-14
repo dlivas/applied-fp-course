@@ -64,13 +64,15 @@ runApp :: IO ()
 runApp =
   do
     dbData <- prepareAppReqs
-    case dbData of
-      Left err ->
-        print err
-      Right fappDB ->
-        do
-          print "Server accessible at http://localhost:3000/"
-          run (3000 :: Int) (app fappDB)
+    either
+      print
+      startServer
+      dbData
+  where
+    startServer fappDB =
+      do
+        print "Server accessible at http://localhost:3000/"
+        run 3000 (app fappDB)
 
 -- We need to complete the following steps to prepare our app requirements:
 --

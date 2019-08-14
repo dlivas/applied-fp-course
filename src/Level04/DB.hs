@@ -79,10 +79,6 @@ initDB fp =
   createTableQ
     = "CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, topic TEXT, comment TEXT, time TEXT)"
 
-runDBAction' :: (a -> Either Error b) -> IO a -> IO (Either Error b)
-runDBAction' action dbAction =
-   (>>= action) . first DBError <$> Sql.runDBAction dbAction
-
 -- Note that we don't store the `Comment` in the DB, it is the type we build
 -- to send to the outside world. We will be loading our `DBComment` type from
 -- the FirstApp.DB.Types module before converting trying to convert it to a
@@ -104,9 +100,14 @@ getComments app topic =
       -- cannot be converted to a Comment, or simply ignoring any DBComment that is
       -- not valid.
   in
-    runDBAction'
-      (traverse fromDBComment)
-      (Sql.query (dbConn app) sql (Sql.Only (getTopic topic)))
+    do
+      dbResult <-
+        Sql.runDBAction $ Sql.query
+          (dbConn app)
+          sql
+          (Sql.Only
+          (getTopic topic))
+      return (first DBError dbResult >>= traverse fromDBComment)
 
 addCommentToTopic
   :: FirstAppDB
@@ -117,12 +118,14 @@ addCommentToTopic app topic comment =
   let
     sql = "INSERT INTO comments (topic,comment,time) VALUES (?,?,?)"
   in
-    getCurrentTime
-      >>=
-        \t ->
-          runDBAction'
-            pure
-            $ Sql.execute (dbConn app) sql (getTopic topic, getCommentText comment, t)
+    do
+      t <- getCurrentTime
+      dbResult <-
+        Sql.runDBAction $ Sql.execute
+            (dbConn app)
+            sql
+            (getTopic topic, getCommentText comment, t)
+      return $ first DBError dbResult
 
 getTopics
   :: FirstAppDB
@@ -131,9 +134,9 @@ getTopics app =
   let
     sql = "SELECT DISTINCT topic FROM comments"
   in
-    runDBAction'
-      (traverse (mkTopic . Sql.fromOnly))
-      $ Sql.query_ (dbConn app) sql
+    do
+      dbResult <- Sql.runDBAction $ Sql.query_ (dbConn app) sql
+      return (first DBError dbResult >>= traverse (mkTopic . Sql.fromOnly))
 
 deleteTopic
   :: FirstAppDB
@@ -143,6 +146,11 @@ deleteTopic app topic =
   let
     sql = "DELETE FROM comments WHERE topic = ?"
   in
-    runDBAction'
-      return
-      $ Sql.execute (dbConn app) sql (Sql.Only (getTopic topic))
+    do
+      dbResult <-
+        Sql.runDBAction $ Sql.execute
+          (dbConn app)
+          sql
+          (Sql.Only
+          (getTopic topic))
+      return $ first DBError dbResult
