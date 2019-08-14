@@ -145,12 +145,11 @@ deleteTopic
 deleteTopic app topic =
   let
     sql = "DELETE FROM comments WHERE topic = ?"
+    dbResult =
+      Sql.runDBAction $ Sql.execute
+        (dbConn app)
+        sql (Sql.Only
+        (getTopic topic))
   in
-    do
-      dbResult <-
-        Sql.runDBAction $ Sql.execute
-          (dbConn app)
-          sql
-          (Sql.Only
-          (getTopic topic))
-      return $ first DBError dbResult
+    first DBError <$> dbResult
+    
