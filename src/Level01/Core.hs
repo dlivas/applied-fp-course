@@ -35,11 +35,14 @@ import           Network.HTTP.Types       (status200)
 --   -> IO ResponseReceived
 app :: Application
 app _ respond =
-  respond $
-    responseLBS
-      status200
-      [("Content-Type", "text/plain")]
-      "Hello, World!"
+  let
+    response = 
+      responseLBS
+        status200
+        [("Content-Type", "text/plain")]
+        "Hello, World!"
+  in
+    respond response
 
 -- We keep this main function here as it is useful to build your application as
 -- a library. The reasoning behind this is that when you come to do your

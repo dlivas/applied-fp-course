@@ -20,8 +20,9 @@ import           Network.HTTP.Types                 (Status, hContentType,
 
 import qualified Data.ByteString.Lazy.Char8         as LBS
 
-import           Data.Either                        (Either (Left, Right),
-                                                     either)
+import           Data.Either                        ( Either (Left, Right)
+                                                    , either
+                                                    )
 
 import           Data.Semigroup                     ((<>))
 import           Data.Text                          (Text)
@@ -56,7 +57,7 @@ import           Data.Bifunctor                     ( first
 -- Our start-up is becoming more complicated and could fail in new and
 -- interesting ways. But we also want to be able to capture these errors in a
 -- single type so that we can deal with the entire start-up process as a whole.
-data StartUpError
+newtype StartUpError
   = DBInitErr SQLiteResponse
   deriving Show
 
@@ -64,10 +65,7 @@ runApp :: IO ()
 runApp =
   do
     dbData <- prepareAppReqs
-    either
-      print
-      startServer
-      dbData
+    either print startServer dbData
   where
     startServer fappDB =
       do
@@ -192,7 +190,8 @@ mkAddRequest
   :: Text
   -> LBS.ByteString
   -> Either Error RqType
-mkAddRequest ti c = AddRq
+mkAddRequest ti c =
+  AddRq
   <$> mkTopic ti
   <*> (mkCommentText . decodeUtf8 . LBS.toStrict) c
 

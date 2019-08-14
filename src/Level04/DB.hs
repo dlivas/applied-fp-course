@@ -105,9 +105,8 @@ getComments app topic =
         Sql.runDBAction $ Sql.query
           (dbConn app)
           sql
-          (Sql.Only
-          (getTopic topic))
-      return (first DBError dbResult >>= traverse fromDBComment)
+          (Sql.Only (getTopic topic))
+      return $ first DBError dbResult >>= traverse fromDBComment
 
 addCommentToTopic
   :: FirstAppDB
@@ -148,8 +147,7 @@ deleteTopic app topic =
     dbResult =
       Sql.runDBAction $ Sql.execute
         (dbConn app)
-        sql (Sql.Only
-        (getTopic topic))
+        sql
+        (Sql.Only (getTopic topic))
   in
     first DBError <$> dbResult
-    
