@@ -13,6 +13,8 @@ module Level04.DB
   )
 where
 
+import           Control.Monad                      (join)
+
 import           Data.Text                      ( Text )
 import qualified Data.Text                     as Text
 
@@ -20,6 +22,7 @@ import           Data.Time                      ( getCurrentTime )
 
 import           Data.Bifunctor                 ( first
                                                 , second
+                                                , bimap
                                                 )
 
 import           Database.SQLite.Simple         ( Connection

@@ -8,15 +8,24 @@ module Level04.Core
 import           Control.Applicative                (liftA2)
 import           Control.Monad                      (join)
 
-import           Network.Wai                        (Application, Request,
-                                                     Response, pathInfo,
-                                                     requestMethod, responseLBS,
-                                                     strictRequestBody)
+import           Network.Wai                        ( Application
+                                                    , Request
+                                                    , Response
+                                                    , pathInfo
+                                                    , requestMethod
+                                                    , responseLBS
+                                                    , strictRequestBody
+                                                    )
+
 import           Network.Wai.Handler.Warp           (run)
 
-import           Network.HTTP.Types                 (Status, hContentType,
-                                                     status200, status400,
-                                                     status404, status500)
+import           Network.HTTP.Types                 ( Status
+                                                    , hContentType
+                                                    , status200
+                                                    , status400
+                                                    , status404
+                                                    , status500
+                                                    )
 
 import qualified Data.ByteString.Lazy.Char8         as LBS
 
@@ -133,10 +142,11 @@ resp200Json e =
 app
   :: DB.FirstAppDB -- ^ Add the Database record to our app so we can use it
   -> Application
-app db rq cb = do
-  rq' <- mkRequest rq
-  resp <- handleRespErr <$> handleRErr rq'
-  cb resp
+app db rq cb =
+  do
+    rq' <- mkRequest rq
+    resp <- handleRespErr <$> handleRErr rq'
+    cb resp
   where
     handleRespErr :: Either Error Response -> Response
     handleRespErr = either mkErrorResponse id
