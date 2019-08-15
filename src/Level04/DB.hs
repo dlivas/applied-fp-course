@@ -71,12 +71,15 @@ closeDB = Sql.close . dbConn
 initDB
   :: FilePath
   -> IO (Either SQLiteResponse FirstAppDB)
-initDB fp =
-  let dbAction = do
+initDB =
+  let
+    dbAction fp =
+      do
         connection <- Sql.open fp
         Sql.execute_ connection createTableQ
         return $ FirstAppDB connection
-  in  Sql.runDBAction dbAction
+  in
+    Sql.runDBAction . dbAction
  where
   -- Query has an `IsString` instance so string literals like this can be
   -- converted into a `Query` type when the `OverloadedStrings` language
