@@ -114,9 +114,10 @@ getComments app (Topic topic) =
     do
       -- type DatabaseResponse a = Either SQLiteResponse a
       -- (Sql.runDBAction dbAction) ::
-      --    IO (DatabaseResponse [Either EmptyText Comment])
+      --    IO (DatabaseResponse [DBComment])
+      -- fromDBComment :: DBComment -> Either Error Comment
+      -- dbResult :: DatabaseResponse [DBComment]
       dbResult <- Sql.runDBAction dbAction
-      -- dbResult :: DatabaseResponse [Either EmptyText Comment]
       return $ first DBError dbResult >>= traverse fromDBComment
 
 addCommentToTopic
@@ -150,10 +151,11 @@ getTopics app =
     do
       -- type DatabaseResponse a = Either SQLiteResponse a
       -- (Sql.runDBAction dbAction) ::
-      --    IO (DatabaseResponse [Either EmptyText Topic])
+      --    IO (DatabaseResponse [Text])
+      -- mkTopic :: Text -> Either Error Topic
+      -- dbResult :: DatabaseResponse [Text]
       dbResult <- Sql.runDBAction dbAction
       return $
-        -- dbResult :: DatabaseResponse [Either EmptyText Topic]
         first DBError dbResult
           >>= traverse (mkTopic . Sql.fromOnly)
 
