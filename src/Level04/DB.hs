@@ -1,5 +1,7 @@
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-unused-matches #-}
+
 module Level04.DB
   ( FirstAppDB(FirstAppDB)
   , initDB
@@ -37,7 +39,7 @@ import           Level04.Types                  ( Comment
                                                 , getCommentText
                                                 , fromDBComment
                                                 , Error(..)
-                                                , Topic
+                                                , Topic(..)
                                                 )
 
 -- ------------------------------------------------------------------------|
@@ -89,23 +91,22 @@ initDB fp =
 --
 -- HINT: You can use '?' or named place-holders as query parameters. Have a look
 -- at the section on parameter substitution in sqlite-simple's documentation.
+-- There are several possible implementations of this function. Particularly
+-- there may be a trade-off between deciding to throw an Error if a DBComment
+-- cannot be converted to a Comment, or simply ignoring any DBComment that is
+-- not valid.
 getComments
   :: FirstAppDB
   -> Topic
   -> IO (Either Error [Comment])
-getComments app topic =
-  let sql = "SELECT id,topic,comment,time FROM comments WHERE topic = ?"
-      -- There are several possible implementations of this function. Particularly
-      -- there may be a trade-off between deciding to throw an Error if a DBComment
-      -- cannot be converted to a Comment, or simply ignoring any DBComment that is
-      -- not valid.
+getComments app (Topic topic) =
+  let
+    sql = "SELECT id,topic,comment,time FROM comments WHERE topic = ?"
+    conn = dbConn app
+    dbAction = Sql.query conn sql (Sql.Only topic)
   in
     do
-      dbResult <-
-        Sql.runDBAction $ Sql.query
-          (dbConn app)
-          sql
-          (Sql.Only (getTopic topic))
+      dbResult <- Sql.runDBAction dbAction
       return $ first DBError dbResult >>= traverse fromDBComment
 
 addCommentToTopic
@@ -116,14 +117,13 @@ addCommentToTopic
 addCommentToTopic app topic comment =
   let
     sql = "INSERT INTO comments (topic,comment,time) VALUES (?,?,?)"
+    conn = dbConn app
+    dbAction t =
+      Sql.execute conn sql (getTopic topic, getCommentText comment, t)
   in
     do
       t <- getCurrentTime
-      dbResult <-
-        Sql.runDBAction $ Sql.execute
-            (dbConn app)
-            sql
-            (getTopic topic, getCommentText comment, t)
+      dbResult <- Sql.runDBAction $ dbAction t
       return $ first DBError dbResult
 
 getTopics
@@ -132,22 +132,21 @@ getTopics
 getTopics app =
   let
     sql = "SELECT DISTINCT topic FROM comments"
+    conn = dbConn app
+    dbAction = Sql.query_ conn sql
   in
     do
-      dbResult <- Sql.runDBAction $ Sql.query_ (dbConn app) sql
-      return (first DBError dbResult >>= traverse (mkTopic . Sql.fromOnly))
+      dbResult <- Sql.runDBAction dbAction
+      return $ first DBError dbResult >>= traverse (mkTopic . Sql.fromOnly)
 
 deleteTopic
   :: FirstAppDB
   -> Topic
   -> IO (Either Error ())
-deleteTopic app topic =
+deleteTopic app (Topic topic) =
   let
     sql = "DELETE FROM comments WHERE topic = ?"
-    dbResult =
-      Sql.runDBAction $ Sql.execute
-        (dbConn app)
-        sql
-        (Sql.Only (getTopic topic))
+    conn = dbConn app
+    dbAction = Sql.execute conn sql (Sql.Only topic)
   in
-    first DBError <$> dbResult
+    first DBError <$> Sql.runDBAction dbAction

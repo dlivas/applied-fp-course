@@ -5,7 +5,7 @@ module Level04.Types
   ( Error (..)
   , RqType (..)
   , ContentType (..)
-  , Topic
+  , Topic (..)
   , CommentText
   , Comment (..)
   , mkTopic
@@ -46,7 +46,7 @@ import           Level04.Types.CommentText  ( CommentText
                                             , mkCommentText
                                             , encodeCommentText
                                             )
-import           Level04.Types.Topic        ( Topic
+import           Level04.Types.Topic        ( Topic(..)
                                             , getTopic
                                             , mkTopic
                                             , encodeTopic

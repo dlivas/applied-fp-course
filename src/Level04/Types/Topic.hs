@@ -1,5 +1,5 @@
 module Level04.Types.Topic
-  ( Topic
+  ( Topic(..)
   , mkTopic
   , getTopic
   , encodeTopic
