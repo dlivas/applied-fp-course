@@ -56,7 +56,7 @@ import           Level04.Types                  ( Comment
 --
 -- To help with that, we create a new data type that can hold our `Connection`
 -- for us, and allows it to be expanded later if we need to
-data FirstAppDB = FirstAppDB
+newtype FirstAppDB = FirstAppDB
   { dbConn :: Connection
   }
 
@@ -112,7 +112,11 @@ getComments app (Topic topic) =
     dbAction = Sql.query conn sql (Sql.Only topic)
   in
     do
+      -- type DatabaseResponse a = Either SQLiteResponse a
+      -- (Sql.runDBAction dbAction) ::
+      --    IO (DatabaseResponse [Either EmptyText Comment])
       dbResult <- Sql.runDBAction dbAction
+      -- dbResult :: DatabaseResponse [Either EmptyText Comment]
       return $ first DBError dbResult >>= traverse fromDBComment
 
 addCommentToTopic
@@ -128,9 +132,11 @@ addCommentToTopic app topic comment =
       Sql.execute conn sql (getTopic topic, getCommentText comment, t)
   in
     do
+      -- type DatabaseResponse a = Either SQLiteResponse a
+      -- (Sql.runDBAction (dbAction t)) ::
+      --    IO (DatabaseResponse ())
       t <- getCurrentTime
-      dbResult <- Sql.runDBAction $ dbAction t
-      return $ first DBError dbResult
+      first DBError <$> Sql.runDBAction (dbAction t)
 
 getTopics
   :: FirstAppDB
@@ -142,8 +148,14 @@ getTopics app =
     dbAction = Sql.query_ conn sql
   in
     do
+      -- type DatabaseResponse a = Either SQLiteResponse a
+      -- (Sql.runDBAction dbAction) ::
+      --    IO (DatabaseResponse [Either EmptyText Topic])
       dbResult <- Sql.runDBAction dbAction
-      return $ first DBError dbResult >>= traverse (mkTopic . Sql.fromOnly)
+      return $
+        -- dbResult :: DatabaseResponse [Either EmptyText Topic]
+        first DBError dbResult
+          >>= traverse (mkTopic . Sql.fromOnly)
 
 deleteTopic
   :: FirstAppDB
@@ -155,4 +167,7 @@ deleteTopic app (Topic topic) =
     conn = dbConn app
     dbAction = Sql.execute conn sql (Sql.Only topic)
   in
+    -- type DatabaseResponse a = Either SQLiteResponse a
+    -- (Sql.runDBAction dbAction) ::
+    --    IO (DatabaseResponse ())
     first DBError <$> Sql.runDBAction dbAction
