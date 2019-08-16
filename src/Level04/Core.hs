@@ -66,7 +66,7 @@ import           Data.Bifunctor                     ( first
 -- Our start-up is becoming more complicated and could fail in new and
 -- interesting ways. But we also want to be able to capture these errors in a
 -- single type so that we can deal with the entire start-up process as a whole.
-newtype StartUpError
+newtype DBInitErr
   = DBInitErr SQLiteResponse
   deriving Show
 
@@ -89,7 +89,7 @@ runApp =
 -- Our application configuration is defined in Conf.hs
 --
 prepareAppReqs
-  :: IO ( Either StartUpError DB.FirstAppDB )
+  :: IO ( Either DBInitErr DB.FirstAppDB )
 prepareAppReqs =
   first DBInitErr <$> DB.initDB (dbFilePath firstAppConfig)
 
@@ -139,22 +139,27 @@ resp200Json e =
   mkResponse status200 JSON . E.simplePureEncodeNoSpaces e
 
 -- |
+-- defined in Network.Wai:
+-- type Application =
+--   Request
+--   -> (Response -> IO ResponseReceived)
+--   -> IO ResponseReceived
 app
   :: DB.FirstAppDB -- ^ Add the Database record to our app so we can use it
   -> Application
-app db rq cb =
+app db request replyCallback =
   do
-    rq' <- mkRequest rq
-    resp <- handleRespErr <$> handleRErr rq'
-    cb resp
+    request' <- mkRequest request
+    response <- handleRespErr <$> handleReqErr request'
+    replyCallback response
   where
     handleRespErr :: Either Error Response -> Response
     handleRespErr = either mkErrorResponse id
 
     -- We want to pass the Database through to the handleRequest so it's
     -- available to all of our handlers.
-    handleRErr :: Either Error RqType -> IO (Either Error Response)
-    handleRErr = either ( pure . Left ) ( handleRequest db )
+    handleReqErr :: Either Error RqType -> IO (Either Error Response)
+    handleReqErr = either ( pure . Left ) ( handleRequest db )
 
 -- | Handle each of the different types of request. See how the types have helped narrow our focus
 -- to only those types of request that we care about. Along with ensuring that once the data has
