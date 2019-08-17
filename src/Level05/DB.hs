@@ -19,8 +19,9 @@ import qualified Data.Text                          as Text
 import           Data.Bifunctor                     (first, second, bimap)
 import           Data.Time                          (getCurrentTime)
 
-import           Database.SQLite.Simple             (Connection,
-                                                     Query (fromQuery))
+import           Database.SQLite.Simple             ( Connection
+                                                    , Query (fromQuery)
+                                                    )
 import qualified Database.SQLite.Simple             as Sql
 
 import qualified Database.SQLite.SimpleErrors       as Sql
@@ -97,9 +98,15 @@ runDB transformResult dbAction =
   --
   -- Sql.runDBAction :: IO a -> IO (DatabaseResponse a)
   --
-  AppM $
-    Sql.runDBAction dbAction
-      >>= return . either (Left . DBError) transformResult
+  let
+    runnDBAction' =
+      AppM $
+        Sql.runDBAction dbAction
+          >>= return . either (Left . DBError) transformResult
+  in
+    catchError
+      runnDBAction'
+      (AppM . return . Left)
 
 getComments
   :: FirstAppDB
@@ -108,7 +115,11 @@ getComments
 getComments app topic =
   let
     sql = "SELECT id,topic,comment,time FROM comments WHERE topic = ?"
-    dbAction = Sql.query (dbConn app) sql (Sql.Only (getTopic topic))
+    dbAction =
+      Sql.query
+        (dbConn app)
+        sql
+        (Sql.Only (getTopic topic))
     transformResult = traverse fromDBComment
   in
     runDB transformResult dbAction
@@ -124,12 +135,13 @@ addCommentToTopic app topic commentText =
     dbAction =
       do
         t <- getCurrentTime
-        Sql.execute (dbConn app) sql (getTopic topic, getCommentText commentText, t)
-        return (Right ())
+        Right () <$
+          Sql.execute
+            (dbConn app)
+            sql
+            (getTopic topic, getCommentText commentText, t)
   in
-    catchError
-      (runDB id dbAction)
-      (AppM . return . Left)
+    runDB id dbAction
 
 getTopics
   :: FirstAppDB
@@ -138,7 +150,7 @@ getTopics app =
   let
     sql = "SELECT DISTINCT topic FROM comments"
     dbAction = Sql.query_ (dbConn app) sql
-    transformResult = traverse (mkTopic . Sql.fromOnly)
+    transformResult = traverse $ mkTopic . Sql.fromOnly
   in
     runDB transformResult dbAction
 
@@ -146,7 +158,12 @@ deleteTopic
   :: FirstAppDB
   -> Topic
   -> AppM ()
-deleteTopic =
-  error "Copy your completed 'deleteTopic' and refactor to match the new type signature"
+deleteTopic app topic=
+  let
+    sql = "DELETE FROM comments WHERE topic = ?"
+    dbAction =
+      Right () <$ Sql.execute (dbConn app) sql (Sql.Only (getTopic topic))
+  in
+    runDB id dbAction
 
 -- Go to 'src/Level05/Core.hs' next.
