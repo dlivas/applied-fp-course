@@ -9,12 +9,14 @@ module Level05.DB
   , deleteTopic
   ) where
 
+import           Control.Monad                      (join)
 import           Control.Monad.IO.Class             (liftIO)
+import           Control.Monad.Except               ( MonadError(..) )
 
 import           Data.Text                          (Text)
 import qualified Data.Text                          as Text
 
-import           Data.Bifunctor                     (first)
+import           Data.Bifunctor                     (first, second, bimap)
 import           Data.Time                          (getCurrentTime)
 
 import           Database.SQLite.Simple             (Connection,
@@ -24,13 +26,20 @@ import qualified Database.SQLite.Simple             as Sql
 import qualified Database.SQLite.SimpleErrors       as Sql
 import           Database.SQLite.SimpleErrors.Types (SQLiteResponse)
 
-import           Level05.Types                      (Comment, CommentText,
-                                                     Error (DBError), Topic,
-                                                     fromDBComment,
-                                                     getCommentText, getTopic,
-                                                     mkTopic)
+import           Level05.Types                      ( Comment
+                                                    , CommentText
+                                                    , Error (DBError)
+                                                    , Topic
+                                                    , fromDBComment
+                                                    , getCommentText
+                                                    , getTopic
+                                                    , mkTopic
+                                                    )
 
-import           Level05.AppM                       (AppM)
+import           Level05.AppM                       ( AppM(..)
+                                                    , liftIO
+                                                    , liftEither
+                                                    )
 
 -- We have a data type to simplify passing around the information we need to run
 -- our database queries. This also allows things to change over time without
@@ -69,34 +78,69 @@ runDB
   :: (a -> Either Error b)
   -> IO a
   -> AppM b
-runDB =
+runDB transformResult dbAction =
   -- This function is intended to abstract away the running of DB functions and
   -- the catching of any errors. As well as the process of running some
   -- processing function over those results.
-  error "Write 'runDB' to match the type signature"
   -- Move your use of DB.runDBAction to this function to avoid repeating
   -- yourself in the various DB functions.
+  --
+  -- types to be used for the impemenntation:
+  --
+  -- data Error = UnknownRoute
+  --    | EmptyCommentText
+  --    | EmptyTopic
+  --    | DBError SQLiteResponse
+  --    deriving (Eq, Show)
+  --
+  -- type DatabaseResponse a = Either SQLiteResponse a
+  --
+  -- Sql.runDBAction :: IO a -> IO (DatabaseResponse a)
+  --
+  AppM $
+    Sql.runDBAction dbAction
+      >>= return . either (Left . DBError) transformResult
 
 getComments
   :: FirstAppDB
   -> Topic
   -> AppM [Comment]
-getComments =
-  error "Copy your completed 'getComments' and refactor to match the new type signature"
+getComments app topic =
+  let
+    sql = "SELECT id,topic,comment,time FROM comments WHERE topic = ?"
+    dbAction = Sql.query (dbConn app) sql (Sql.Only (getTopic topic))
+    transformResult = traverse fromDBComment
+  in
+    runDB transformResult dbAction
 
 addCommentToTopic
   :: FirstAppDB
   -> Topic
   -> CommentText
   -> AppM ()
-addCommentToTopic =
-  error "Copy your completed 'appCommentToTopic' and refactor to match the new type signature"
+addCommentToTopic app topic commentText =
+  let
+    sql = "INSERT INTO comments (topic,comment,time) VALUES (?,?,?)"
+    dbAction =
+      do
+        t <- getCurrentTime
+        Sql.execute (dbConn app) sql (getTopic topic, getCommentText commentText, t)
+        return (Right ())
+  in
+    catchError
+      (runDB id dbAction)
+      (AppM . return . Left)
 
 getTopics
   :: FirstAppDB
   -> AppM [Topic]
-getTopics =
-  error "Copy your completed 'getTopics' and refactor to match the new type signature"
+getTopics app =
+  let
+    sql = "SELECT DISTINCT topic FROM comments"
+    dbAction = Sql.query_ (dbConn app) sql
+    transformResult = traverse (mkTopic . Sql.fromOnly)
+  in
+    runDB transformResult dbAction
 
 deleteTopic
   :: FirstAppDB

@@ -231,4 +231,4 @@ mkErrorResponse EmptyCommentText =
 mkErrorResponse EmptyTopic =
   resp400 PlainText "Empty Topic"
 mkErrorResponse (DBError _) =
-  resp400 PlainText "DB Error"
+  resp500 PlainText "Server DB Error"

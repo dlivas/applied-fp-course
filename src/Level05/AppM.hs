@@ -2,8 +2,9 @@
 {-# LANGUAGE InstanceSigs          #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Level05.AppM
-  ( AppM
+  ( AppM(..)
   , liftEither
+  , liftIO
   , runAppM
   ) where
 
@@ -72,32 +73,56 @@ runAppM (AppM m) =
 
 instance Functor AppM where
   fmap :: (a -> b) -> AppM a -> AppM b
-  fmap = error "fmap for AppM not implemented"
+  fmap f (AppM io'e'a) =
+    AppM (fmap f <$> io'e'a)
 
 instance Applicative AppM where
   pure :: a -> AppM a
-  pure  = error "pure for AppM not implemented"
+  pure =
+    liftEither . Right
 
   (<*>) :: AppM (a -> b) -> AppM a -> AppM b
-  (<*>) = error "spaceship for AppM not implemented"
+  AppM io'e'a2b <*> AppM io'e'a =
+    AppM
+      (do
+        e'f <- io'e'a2b
+        e'a <- io'e'a
+        return (e'f <*> e'a))
 
 instance Monad AppM where
   return :: a -> AppM a
-  return = error "return for AppM not implemented"
+  return =
+    pure
 
   (>>=) :: AppM a -> (a -> AppM b) -> AppM b
-  (>>=)  = error "bind for AppM not implemented"
+  AppM io'e'a >>= f =
+    let
+      io'e'b =
+        do
+          e'a <- io'e'a
+          either (return . Left) (runAppM . f) e'a
+    in
+      AppM io'e'b
 
 instance MonadIO AppM where
   liftIO :: IO a -> AppM a
-  liftIO = error "liftIO for AppM not implemented"
+  liftIO io'a =
+    AppM
+      (do
+        a <- io'a
+        runAppM $ return a)
 
 instance MonadError Error AppM where
   throwError :: Error -> AppM a
-  throwError = error "throwError for AppM not implemented"
+  throwError =
+     liftEither . Left
 
   catchError :: AppM a -> (Error -> AppM a) -> AppM a
-  catchError = error "catchError for AppM not implemented"
+  catchError (AppM io'e'a) e2am =
+    AppM
+      (do
+        e'a <- io'e'a
+        either (runAppM . e2am) (return . Right) e'a)
 
 -- This is a helper function that will `lift` an Either value into our new AppM
 -- by applying `throwError` to the Left value, and using `pure` to lift the
@@ -110,6 +135,6 @@ liftEither
   :: Either Error a
   -> AppM a
 liftEither =
-  error "liftEither not implemented"
+  AppM . return
 
 -- Go to 'src/Level05/DB.hs' next.
