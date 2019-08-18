@@ -99,7 +99,9 @@ runApp = do
         -- case of that value throwing an exception, execute the second 'IO b'. We do this to ensure
         -- that our DB connection will always be closed when the application finishes, or crashes.
         Ex.finally
-          (run port (app cfg))
+          (do
+            print ("===> Server running on port " ++ show port ++ "...")
+            run port (app cfg))
           (DB.closeDB cfg)
 
 -- We need to complete the following steps to prepare our app requirements:
