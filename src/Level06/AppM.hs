@@ -9,6 +9,8 @@ module Level06.AppM
   , runApp
   ) where
 
+import           Data.Functor.Contravariant ((>$<))
+
 import           Control.Monad.Except   (MonadError (..))
 import           Control.Monad.IO.Class (MonadIO (..))
 
@@ -49,39 +51,57 @@ runApp = runAppM
 
 instance Functor (AppM e) where
   fmap :: (a -> b) -> AppM e a -> AppM e b
-  fmap = error "fmap for (AppM e) not implemented"
+  fmap a2b (AppM io'e'a) =
+    AppM (fmap a2b <$> io'e'a)
 
 instance Applicative (AppM e) where
   pure :: a -> AppM e a
-  pure  = error "pure for (AppM e) not implemented"
+  pure  =
+    liftEither . Right
 
   (<*>) :: AppM e (a -> b) -> AppM e a -> AppM e b
-  (<*>) = error "spaceship for (AppM e) not implemented"
+  AppM io'e'a2b <*> AppM io'e'a =
+    AppM
+      (do
+        e'f <- io'e'a2b
+        e'a <- io'e'a
+        return $ e'f <*> e'a)
 
 instance Monad (AppM e) where
   return :: a -> AppM e a
-  return = error "return for (AppM e) not implemented"
+  return = pure
 
   (>>=) :: AppM e a -> (a -> AppM e b) -> AppM e b
-  (>>=)  = error "bind for (AppM e) not implemented"
+  AppM io'e'a >>= a2ab  =
+    AppM
+      (do
+        e'a <- io'e'a
+        runAppM (either throwError a2ab e'a))
 
 instance MonadIO (AppM e) where
   liftIO :: IO a -> AppM e a
-  liftIO = error "liftIO for (AppM e) not implemented"
+  liftIO =
+    AppM . fmap Right
 
 instance MonadError e (AppM e) where
   throwError :: e -> AppM e a
-  throwError = error "throwError for (AppM e) not implemented"
+  throwError =
+    liftEither . Left
 
   catchError :: AppM e a -> (e -> AppM e a) -> AppM e a
-  catchError = error "catchError for (AppM e) not implemented"
+  catchError (AppM io'e'a) e2appM =
+    AppM
+      (do
+        e'a <- io'e'a
+        either (runAppM . e2appM) (const io'e'a) e'a)
 
 -- The 'Bifunctor' instance for 'Either' has proved useful several times
 -- already. Now that our 'AppM' exposes both type variables that are used in our
 -- 'Either', we can define a Bifunctor instance and reap similar benefits.
 instance Bifunctor AppM where
   bimap :: (e -> d) -> (a -> b) -> AppM e a -> AppM d b
-  bimap = error "bimap for AppM not implemented"
+  bimap e2d a2b (AppM io'e'a) =
+    AppM (bimap e2d a2b <$> io'e'a)
 
 -- This is a helper function that will `lift` an Either value into our new AppM
 -- by applying `throwError` to the Left value, and using `pure` to lift the
@@ -91,4 +111,5 @@ instance Bifunctor AppM where
 -- pure :: Applicative m => a -> m a
 --
 liftEither :: Either e a -> AppM e a
-liftEither = error "throwLeft not implemented"
+liftEither =
+  AppM . return

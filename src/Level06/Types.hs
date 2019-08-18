@@ -155,6 +155,9 @@ newtype DBFilePath = DBFilePath
 -- - A customisable port number: ``Port``
 -- - A filepath for our SQLite database: ``DBFilePath``
 data Conf = Conf
+  { port :: Port
+  , dbFilePath :: DBFilePath
+  }
 
 -- We're storing our Port as a Word16 to be more precise and prevent invalid
 -- values from being used in our application. However Wai is not so stringent.
@@ -170,7 +173,7 @@ confPortToWai
   :: Conf
   -> Int
 confPortToWai =
-  error "confPortToWai not implemented"
+  fromIntegral . getPort . port
 
 -- Similar to when we were considering our application types. We can add to this sum type as we
 -- build our application and the compiler can help us out.
@@ -212,8 +215,8 @@ data PartialConf = PartialConf
 -- on the ``Semigroup`` instance for Last to always get the last value.
 instance Semigroup PartialConf where
   _a <> _b = PartialConf
-    { pcPort       = error "pcPort (<>) not implemented"
-    , pcDBFilePath = error "pcDBFilePath (<>) not implemented"
+    { pcPort       = pcPort _b
+    , pcDBFilePath = pcDBFilePath _b
     }
 
 -- We now define our ``Monoid`` instance for ``PartialConf``. Allowing us to
@@ -234,5 +237,6 @@ instance Monoid PartialConf where
 -- data structure.
 partialConfDecoder :: Monad f => Decoder f PartialConf
 partialConfDecoder = error "PartialConf Decoder not implemented"
+  -- commandLineParser
 
 -- Go to 'src/Level06/Conf/File.hs' next
