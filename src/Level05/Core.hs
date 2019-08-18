@@ -84,13 +84,13 @@ newtype DBInitErr
 runApp :: IO ()
 runApp = do
   -- Load our configuration
-  cfgE <- prepareAppReqs
+  dbInit <- prepareAppReqs
   -- Loading the configuration can fail, so we have to take that into account now.
-  case cfgE of
+  case dbInit of
     Left err   ->
       -- We can't run our app at all! Display the message and exit the application.
       print "DB Configuration Error"
-    Right cfg ->
+    Right db ->
       let
         port = Conf.getPort Conf.firstAppConfig
       in
@@ -101,8 +101,8 @@ runApp = do
         Ex.finally
           (do
             print ("===> Server running on port " ++ show port ++ "...")
-            run port (app cfg))
-          (DB.closeDB cfg)
+            run port (app db))
+          (DB.closeDB db)
 
 -- We need to complete the following steps to prepare our app requirements:
 --
