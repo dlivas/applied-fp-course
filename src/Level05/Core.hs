@@ -176,15 +176,16 @@ app
   -> Application
 app db request replyCallback =
   let
-    serveRequest =
-      catchError
+    processRequest =
+      runAppM
         (mkRequest request
-          >>= handleRequest db) 
-        (pure . mkErrorResponse)
+          >>= handleRequest db)
+    replyResponse =
+      either (replyCallback . mkErrorResponse) replyCallback
   in
     do
-      response <- runAppM serveRequest
-      either (replyCallback . mkErrorResponse) replyCallback response
+      response <- processRequest
+      replyResponse response
     
 handleRequest
   :: DB.FirstAppDB
