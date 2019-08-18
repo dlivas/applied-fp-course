@@ -122,7 +122,7 @@ instance MonadError Error AppM where
     AppM
       (do
         e'a <- io'e'a
-        either (runAppM . e2am) (return . Right) e'a)
+        either (runAppM . e2am) (pure . Right) e'a)
 
 -- This is a helper function that will `lift` an Either value into our new AppM
 -- by applying `throwError` to the Left value, and using `pure` to lift the

@@ -10,19 +10,30 @@ import qualified Control.Exception                  as Ex
 
 import           Control.Monad                      (join)
 
-import           Control.Monad.Except               ( MonadError(..) )
+import           Control.Monad.Except               ( MonadError(..)
+                                                    , ExceptT
+                                                    )
 
 import           Control.Monad.IO.Class             (liftIO)
 
-import           Network.Wai                        (Application, Request,
-                                                     Response, pathInfo,
-                                                     requestMethod, responseLBS,
-                                                     strictRequestBody)
+import           Network.Wai                        ( Application
+                                                    , Request
+                                                    , Response
+                                                    , pathInfo
+                                                    , requestMethod
+                                                    , responseLBS
+                                                    , strictRequestBody
+                                                    )
+
 import           Network.Wai.Handler.Warp           (run)
 
-import           Network.HTTP.Types                 (Status, hContentType,
-                                                     status200, status400,
-                                                     status404, status500)
+import           Network.HTTP.Types                 ( Status
+                                                    , hContentType
+                                                    , status200
+                                                    , status400
+                                                    , status404
+                                                    , status500
+                                                    )
 
 import qualified Data.ByteString.Lazy               as LBS
 
@@ -49,12 +60,19 @@ import           Level05.AppM                       ( AppM(..)
 
 import qualified Level05.Conf                       as Conf
 import qualified Level05.DB                         as DB
-import           Level05.Types                      (ContentType (..),
-                                                     Error (..),
-                                                     RqType (AddRq, ListRq, ViewRq),
-                                                     encodeComment, encodeTopic,
-                                                     mkCommentText, mkTopic,
-                                                     renderContentType)
+import           Level05.Types                      ( ContentType (..)
+                                                    , Error (..)
+                                                    , RqType
+                                                        ( AddRq
+                                                        , ListRq
+                                                        , ViewRq
+                                                        )
+                                                    , encodeComment
+                                                    , encodeTopic
+                                                    , mkCommentText
+                                                    , mkTopic
+                                                    , renderContentType
+                                                    )
 
 -- Our start-up is becoming more complicated and could fail in new and
 -- interesting ways. But we also want to be able to capture these errors in a
@@ -158,13 +176,16 @@ app
   -> Application
 app db request replyCallback =
   let
-    appM =
+    serveRequest =
       catchError
-        (mkRequest request >>= handleRequest db)
-        (return . mkErrorResponse)
+        (mkRequest request
+          >>= handleRequest db) 
+        (pure . mkErrorResponse)
   in
-    second replyCallback <$> appM
-
+    do
+      response <- runAppM serveRequest
+      either (replyCallback . mkErrorResponse) replyCallback response
+    
 handleRequest
   :: DB.FirstAppDB
   -> RqType
