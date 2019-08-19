@@ -6,6 +6,7 @@
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeFamilies               #-}
+
 module Level06.Types
   ( Error (..)
   , ConfigError (..)
@@ -32,12 +33,17 @@ module Level06.Types
 import           GHC.Word                           (Word16)
 
 import           Data.ByteString                    (ByteString)
-import           Data.Text                          (Text, pack)
+import           Data.Text                          ( Text
+                                                    , pack
+                                                    , unpack
+                                                    )
 
 import           System.IO.Error                    (IOError)
 
-import           Data.Monoid                        (Last (..),
-                                                     Monoid (mappend, mempty))
+import           Data.Monoid                        ( Last (..)
+                                                    , Monoid (mappend, mempty)
+                                                    )
+
 import           Data.Semigroup                     (Semigroup ((<>)))
 
 import           Data.Functor.Contravariant         ((>$<))
@@ -58,14 +64,18 @@ import qualified Waargonaut.Encode                  as E
 import           Database.SQLite.SimpleErrors.Types (SQLiteResponse)
 
 import           Level06.DB.Types                   (DBComment (..))
-import           Level06.Types.CommentText          (CommentText,
-                                                     encodeCommentText,
-                                                     getCommentText,
-                                                     mkCommentText)
+import           Level06.Types.CommentText          ( CommentText
+                                                    , encodeCommentText
+                                                    , getCommentText
+                                                    , mkCommentText
+                                                    )
 
 import           Level06.Types.Error                (Error (..))
-import           Level06.Types.Topic                (Topic, encodeTopic,
-                                                     getTopic, mkTopic)
+import           Level06.Types.Topic                ( Topic
+                                                    , encodeTopic
+                                                    , getTopic
+                                                    , mkTopic
+                                                    )
 
 newtype CommentId = CommentId Int
   deriving Show
@@ -215,8 +225,8 @@ data PartialConf = PartialConf
 -- on the ``Semigroup`` instance for Last to always get the last value.
 instance Semigroup PartialConf where
   _a <> _b = PartialConf
-    { pcPort       = pcPort _b
-    , pcDBFilePath = pcDBFilePath _b
+    { pcPort       = pcPort _a <> pcPort _b
+    , pcDBFilePath = pcDBFilePath _a <> pcDBFilePath _b
     }
 
 -- We now define our ``Monoid`` instance for ``PartialConf``. Allowing us to
@@ -236,7 +246,17 @@ instance Monoid PartialConf where
 -- have to tell waargonaut how to go about converting the JSON into our PartialConf
 -- data structure.
 partialConfDecoder :: Monad f => Decoder f PartialConf
-partialConfDecoder = error "PartialConf Decoder not implemented"
-  -- commandLineParser
+partialConfDecoder = 
+  PartialConf
+    <$> D.atKey "pcPort" pcPortDecoder
+    <*> D.atKey "pcDBFilePath" pcDBFilePathDecoder
+
+pcPortDecoder :: Monad f => Decoder f (Last Port)
+pcPortDecoder =
+  Last . Just . Port . fromInteger . toInteger <$> D.int
+
+pcDBFilePathDecoder :: Monad f => Decoder f (Last DBFilePath)
+pcDBFilePathDecoder =
+  Last . Just . DBFilePath . unpack <$> D.text
 
 -- Go to 'src/Level06/Conf/File.hs' next
