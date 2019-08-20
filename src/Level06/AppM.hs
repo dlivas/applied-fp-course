@@ -51,8 +51,8 @@ runApp = runAppM
 
 instance Functor (AppM e) where
   fmap :: (a -> b) -> AppM e a -> AppM e b
-  fmap a2b (AppM io'e'a) =
-    AppM (fmap a2b <$> io'e'a)
+  fmap f (AppM io) =
+    AppM (fmap f <$> io)
 
 instance Applicative (AppM e) where
   pure :: a -> AppM e a
@@ -60,23 +60,22 @@ instance Applicative (AppM e) where
     liftEither . Right
 
   (<*>) :: AppM e (a -> b) -> AppM e a -> AppM e b
-  AppM io'e'a2b <*> AppM io'e'a =
-    AppM
-      (do
-        e'f <- io'e'a2b
-        e'a <- io'e'a
-        return $ e'f <*> e'a)
+  AppM io' <*> AppM io =
+    AppM $
+      do
+        ef <- io'
+        ea <- io
+        return $ ef <*> ea
 
 instance Monad (AppM e) where
   return :: a -> AppM e a
   return = pure
 
   (>>=) :: AppM e a -> (a -> AppM e b) -> AppM e b
-  AppM io'e'a >>= a2ab  =
-    AppM
-      (do
-        e'a <- io'e'a
-        runAppM (either throwError a2ab e'a))
+  AppM io >>= f  =
+    AppM $
+      io >>=
+        runAppM . either throwError f
 
 instance MonadIO (AppM e) where
   liftIO :: IO a -> AppM e a
@@ -89,19 +88,21 @@ instance MonadError e (AppM e) where
     liftEither . Left
 
   catchError :: AppM e a -> (e -> AppM e a) -> AppM e a
-  catchError (AppM io'e'a) e2appM =
-    AppM
-      (do
-        e'a <- io'e'a
-        either (runAppM . e2appM) (const io'e'a) e'a)
-
+  catchError (AppM io) onError =
+    AppM $
+      io >>=
+        either
+          (runAppM . onError)
+          (const io)
+    
 -- The 'Bifunctor' instance for 'Either' has proved useful several times
 -- already. Now that our 'AppM' exposes both type variables that are used in our
 -- 'Either', we can define a Bifunctor instance and reap similar benefits.
 instance Bifunctor AppM where
   bimap :: (e -> d) -> (a -> b) -> AppM e a -> AppM d b
-  bimap e2d a2b (AppM io'e'a) =
-    AppM (bimap e2d a2b <$> io'e'a)
+  bimap f' f (AppM io) =
+    AppM $
+      bimap f' f <$> io
 
 -- This is a helper function that will `lift` an Either value into our new AppM
 -- by applying `throwError` to the Left value, and using `pure` to lift the
