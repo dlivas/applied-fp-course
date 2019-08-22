@@ -28,6 +28,7 @@ module Level06.Types
   , renderContentType
   , confPortToWai
   , fromDBComment
+  , partialConfDecoder
   ) where
 
 import           GHC.Word                           (Word16)
@@ -189,6 +190,8 @@ confPortToWai =
 -- build our application and the compiler can help us out.
 data ConfigError
   = BadConfFile DecodeError
+  | BadConfigFilePath IOError
+  | BadJSONDecoded String
   deriving Show
 
 -- Our application will be able to load configuration from both a file and

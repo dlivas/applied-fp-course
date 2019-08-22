@@ -3,22 +3,48 @@ module Level06.Conf.File where
 
 import           Data.ByteString            (ByteString)
 
+import qualified Data.ByteString.Char8      as BS
+
 import           Data.Text                  (Text, pack)
 
-import           Data.Bifunctor             (first)
+import           Data.Bifunctor             ( first
+                                            , second
+                                            , bimap
+                                            )
+                                            
 import           Data.Monoid                (Last (Last))
 
-import           Control.Exception          (try)
+import           Control.Exception          ( try
+                                            , catch
+                                            )
+import           Control.Monad                  ( join )
+import           Control.Monad.Error            ( throwError
+                                                , catchError
+                                                )
 
 import qualified Data.Attoparsec.ByteString as AB
+import          Data.Functor.Contravariant  ((>$<))
 
-import           Waargonaut                 (Json, parseWaargonaut)
+import           Waargonaut                 ( Json(..)
+                                            , parseWaargonaut
+                                            )
+
 import qualified Waargonaut.Decode          as D
-import           Waargonaut.Decode.Error    (DecodeError (ParseFailed))
 
-import           Level06.AppM               (AppM)
-import           Level06.Types              (ConfigError (BadConfFile),
-                                             PartialConf (PartialConf))
+import           Waargonaut.Decode.Error    ( DecodeError (ParseFailed)
+                                            )
+
+import           Level06.AppM               ( AppM(..)
+                                            , liftEither
+                                            )
+
+import           Level06.Types              ( ConfigError (..)
+                                            , PartialConf (PartialConf)
+                                            , partialConfDecoder
+                                            )
+
+import           System.IO.Error            ( IOError )
+
 -- $setup
 -- >>> :set -XOverloadedStrings
 
@@ -36,7 +62,10 @@ readConfFile
   :: FilePath
   -> AppM ConfigError ByteString
 readConfFile =
-  error "readConfFile not implemented"
+  AppM
+  . fmap (first BadConfigFilePath)
+  . try
+  . BS.readFile
 
 -- | Construct the function that will take a ``FilePath``, read it in, decode it,
 -- and construct our ``PartialConf``.
@@ -44,9 +73,15 @@ parseJSONConfigFile
   :: FilePath
   -> AppM ConfigError PartialConf
 parseJSONConfigFile =
-  error "parseJSONConfigFile not implemented"
+  (>>= (liftEither . first BadJSONDecoded . partialConfDecoder))
+  . fileToJson
   where
     parseFunc :: ByteString -> Either DecodeError Json
     parseFunc = first (ParseFailed . pack . show) . AB.parseOnly parseWaargonaut
+
+    fileToJson :: FilePath -> AppM ConfigError Json
+    fileToJson =
+      (>>= liftEither . first BadConfFile . parseFunc)
+      . readConfFile
 
 -- Go to 'src/Level06/Conf.hs' next.

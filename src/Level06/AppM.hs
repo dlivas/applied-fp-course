@@ -2,10 +2,9 @@
 {-# LANGUAGE InstanceSigs          #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Level06.AppM
-  ( AppM
+  ( AppM(..)
   , App
   , liftEither
-  , runAppM
   , runApp
   ) where
 
@@ -14,7 +13,9 @@ import           Data.Functor.Contravariant ((>$<))
 import           Control.Monad.Except   (MonadError (..))
 import           Control.Monad.IO.Class (MonadIO (..))
 
-import           Data.Bifunctor         (Bifunctor (..))
+import           Data.Bifunctor         ( Bifunctor (..)
+                                        , second
+                                        )
 
 import           Level06.Types          (Error)
 
