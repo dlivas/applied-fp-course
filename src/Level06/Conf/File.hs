@@ -81,18 +81,18 @@ parseJSONConfigFile =
     decodePartConf =
       first (BadConfFile . fst)
       -- the expression above will reveive
-      -- (from the expression bellow) an input
-      -- of type Either (DecodeError, D.CursorHistory) PartialConf
+      -- (from the expression bellow) an input of type
+      -- :: Either (DecodeError, D.CursorHistory) PartialConf
       . D.runPureDecode partialConfDecoder parseFunc
       . D.mkCursor
 
     parseFunc :: ByteString -> Either DecodeError Json
     parseFunc =
-      first (ParseFailed . pack . show)
+      first (ParseFailed . pack . show) 
       . AB.parseOnly parseWaargonaut
 
     --
-    -- functions from previous attempts:
+    -- Previous attempts to solve the exercises:
     --
 
     -- decodePartConf' :: ByteString -> Either ConfigError PartialConf
