@@ -18,9 +18,6 @@ import           Control.Exception          ( try
                                             , catch
                                             )
 import           Control.Monad                  ( join )
-import           Control.Monad.Error            ( throwError
-                                                , catchError
-                                                )
 
 import qualified Data.Attoparsec.ByteString as AB
 import          Data.Functor.Contravariant  ((>$<))
@@ -73,15 +70,47 @@ parseJSONConfigFile
   :: FilePath
   -> AppM ConfigError PartialConf
 parseJSONConfigFile =
-  (>>= (liftEither . first BadJSONDecoded . partialConfDecoder))
-  . fileToJson
+  AppM
+    . fmap (either Left decodePartConf)
+    . runAppM
+    . readConfFile
   where
-    parseFunc :: ByteString -> Either DecodeError Json
-    parseFunc = first (ParseFailed . pack . show) . AB.parseOnly parseWaargonaut
+    decodePartConf
+      :: ByteString
+      -> Either ConfigError PartialConf
+    decodePartConf =
+      first (BadConfFile . fst)
+      -- the expression above will reveive
+      -- (from the expression bellow) an input
+      -- of type Either (DecodeError, D.CursorHistory) PartialConf
+      . D.runPureDecode partialConfDecoder parseFunc
+      . D.mkCursor
 
-    fileToJson :: FilePath -> AppM ConfigError Json
-    fileToJson =
-      (>>= liftEither . first BadConfFile . parseFunc)
-      . readConfFile
+    parseFunc :: ByteString -> Either DecodeError Json
+    parseFunc =
+      first (ParseFailed . pack . show)
+      . AB.parseOnly parseWaargonaut
+
+    --
+    -- functions from previous attempts:
+    --
+
+    -- decodePartConf' :: ByteString -> Either ConfigError PartialConf
+    -- decodePartConf' = first (BadConfFile . fst) . decodePartConf
+
+    -- decodePartConf
+    --   :: ByteString
+    --   -> Either (DecodeError, D.CursorHistory) PartialConf
+    -- decodePartConf = D.runPureDecode partialConfDecoder parseFunc . D.mkCursor
+
+    -- ios :: FilePath -> IO (Either ConfigError ByteString)
+    -- ios =
+    --   runAppM . readConfFile
+      
+    -- fileToJson :: FilePath -> AppM ConfigError Json
+    -- fileToJson =
+    --   (>>= liftEither . first BadConfFile . parseFunc)
+    --   . readConfFile
+
 
 -- Go to 'src/Level06/Conf.hs' next.
