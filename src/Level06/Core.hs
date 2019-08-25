@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-unused-matches #-}
 module Level06.Core
@@ -23,7 +24,9 @@ import           Network.HTTP.Types                 (Status, hContentType,
 
 import qualified Data.ByteString.Lazy               as LBS
 
-import           Data.Bifunctor                     (first)
+import           Data.Bifunctor                 ( first
+                                                , bimap
+                                                )
 import           Data.Either                        (either)
 import           Data.Monoid                        ((<>))
 
@@ -39,13 +42,15 @@ import           Level06.AppM                       (App, AppM (..),
                                                      liftEither, runApp)
 import qualified Level06.Conf                       as Conf
 import qualified Level06.DB                         as DB
-import           Level06.Types                      (Conf, ConfigError,
+import           Level06.Types                      (Conf(..), ConfigError,
+                                                     DBFilePath(..),
                                                      ContentType (..),
                                                      Error (..),
                                                      RqType (AddRq, ListRq, ViewRq),
                                                      encodeComment, encodeTopic,
                                                      mkCommentText, mkTopic,
-                                                     renderContentType)
+                                                     renderContentType,
+                                                     confPortToWai)
 
 -- | Our start-up is becoming more complicated and could fail in new and
 -- interesting ways. But we also want to be able to capture these errors in a
@@ -56,7 +61,21 @@ data StartUpError
   deriving Show
 
 runApplication :: IO ()
-runApplication = error "copy your previous 'runApp' implementation and refactor as needed"
+runApplication = do
+  result <- runAppM prepareAppReqs
+  case result of
+    Left (ConfErr _)   ->
+      print "Configuration File Error"
+    Left (DBInitErr _)   ->
+      print "DB Configuration Error"
+    Right (conf, db) ->
+      let port' = confPortToWai conf
+      in
+        Ex.finally
+          (do
+            print ("===> Server running on port " ++ show port' ++ "...")
+            run port' (app conf db))
+          (DB.closeDB db)
 
 -- | We need to complete the following steps to prepare our app requirements:
 --
@@ -71,8 +90,24 @@ runApplication = error "copy your previous 'runApp' implementation and refactor 
 -- up!
 --
 prepareAppReqs :: AppM StartUpError (Conf, DB.FirstAppDB)
-prepareAppReqs = error "copy your prepareAppReqs from the previous level."
+prepareAppReqs =
+  AppM
+    (do
+      confResult <- appConf
+      case confResult of
+        Right conf ->
+          (either (Left . DBInitErr) (Right . (conf,)))
+          <$> dbInit conf
+        Left err ->
+          return (Left err))
+  where
+    appConf :: IO (Either StartUpError Conf)
+    appConf = do
+      conf <- runAppM (Conf.parseOptions "files/appconfig.json")
+      (return . first ConfErr) conf
 
+    dbInit = DB.initDB . getDBFilePath . dbFilePath
+ 
 -- | Some helper functions to make our lives a little more DRY.
 mkResponse
   :: Status
