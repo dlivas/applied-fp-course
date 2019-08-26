@@ -90,9 +90,9 @@ runApplication = do
   result <- runAppM prepareAppReqs
   case result of
     Left (ConfErr err)   ->
-      print $ "Configuration File Error" ++ show err
-    Left (DBInitErr _)   ->
-      print "DB Configuration Error"
+      print $ "Configuration File Error: " ++ show err
+    Left (DBInitErr err)   ->
+      print $ "DB Configuration Error: " ++ show err
     Right (conf, db) ->
       let port' = confPortToWai conf
       in
