@@ -253,8 +253,8 @@ instance Monoid PartialConf where
 partialConfDecoder :: Monad f => Decoder f PartialConf
 partialConfDecoder = 
   PartialConf
-    <$> D.atKey "pcPort" pcPortDecoder
-    <*> D.atKey "pcDBFilePath" pcDBFilePathDecoder
+    <$> D.atKey "port" pcPortDecoder
+    <*> D.atKey "dbName" pcDBFilePathDecoder
 
 pcPortDecoder :: Monad f => Decoder f (Last Port)
 pcPortDecoder =

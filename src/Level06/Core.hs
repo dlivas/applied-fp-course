@@ -10,23 +10,35 @@ module Level06.Core
 import qualified Control.Exception                  as Ex
 import           Control.Monad.IO.Class             (liftIO)
 
-import           Control.Monad.Except               (catchError, throwError)
+import           Control.Monad.Except               ( catchError
+                                                    , throwError
+                                                    )
 
-import           Network.Wai                        (Application, Request,
-                                                     Response, pathInfo,
-                                                     requestMethod, responseLBS,
-                                                     strictRequestBody)
+import           Network.Wai                        ( Application
+                                                    , Request
+                                                    , Response
+                                                    , pathInfo
+                                                    , requestMethod
+                                                    , responseLBS
+                                                    , strictRequestBody
+                                                    )
+
 import           Network.Wai.Handler.Warp           (run)
 
-import           Network.HTTP.Types                 (Status, hContentType,
-                                                     status200, status400,
-                                                     status404, status500)
+import           Network.HTTP.Types                 ( Status
+                                                    , hContentType
+                                                    , status200
+                                                    , status400
+                                                    , status404
+                                                    , status500
+                                                    )
 
 import qualified Data.ByteString.Lazy               as LBS
 
-import           Data.Bifunctor                 ( first
-                                                , bimap
-                                                )
+import           Data.Bifunctor                     ( first
+                                                    , bimap
+                                                    )
+
 import           Data.Either                        (either)
 import           Data.Monoid                        ((<>))
 
@@ -38,19 +50,32 @@ import           Database.SQLite.SimpleErrors.Types (SQLiteResponse)
 import           Waargonaut.Encode                  (Encoder')
 import qualified Waargonaut.Encode                  as E
 
-import           Level06.AppM                       (App, AppM (..),
-                                                     liftEither, runApp)
+import           Level06.AppM                       ( App
+                                                    , AppM (..)
+                                                    , liftEither
+                                                    , runApp
+                                                    )
+
 import qualified Level06.Conf                       as Conf
 import qualified Level06.DB                         as DB
-import           Level06.Types                      (Conf(..), ConfigError,
-                                                     DBFilePath(..),
-                                                     ContentType (..),
-                                                     Error (..),
-                                                     RqType (AddRq, ListRq, ViewRq),
-                                                     encodeComment, encodeTopic,
-                                                     mkCommentText, mkTopic,
-                                                     renderContentType,
-                                                     confPortToWai)
+
+import           Level06.Types                      ( Conf(..)
+                                                    , ConfigError
+                                                    , DBFilePath(..)
+                                                    , ContentType (..)
+                                                    , Error (..)
+                                                    , RqType
+                                                        ( AddRq
+                                                        , ListRq
+                                                        , ViewRq
+                                                        )
+                                                    , encodeComment
+                                                    , encodeTopic
+                                                    , mkCommentText
+                                                    , mkTopic
+                                                    , renderContentType
+                                                    , confPortToWai
+                                                    )
 
 -- | Our start-up is becoming more complicated and could fail in new and
 -- interesting ways. But we also want to be able to capture these errors in a
@@ -64,8 +89,8 @@ runApplication :: IO ()
 runApplication = do
   result <- runAppM prepareAppReqs
   case result of
-    Left (ConfErr _)   ->
-      print "Configuration File Error"
+    Left (ConfErr err)   ->
+      print $ "Configuration File Error" ++ show err
     Left (DBInitErr _)   ->
       print "DB Configuration Error"
     Right (conf, db) ->
@@ -96,8 +121,7 @@ prepareAppReqs =
       confResult <- appConf
       case confResult of
         Right conf ->
-          (either (Left . DBInitErr) (Right . (conf,)))
-          <$> dbInit conf
+          either (Left . DBInitErr) (Right . (conf,)) <$> dbInit conf
         Left err ->
           return (Left err))
   where
