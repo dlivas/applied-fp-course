@@ -17,20 +17,27 @@ import qualified Data.Text                          as Text
 import           Data.Bifunctor                     (first)
 import           Data.Time                          (getCurrentTime)
 
-import           Database.SQLite.Simple             (Connection,
-                                                     Query (fromQuery))
+import           Database.SQLite.Simple             ( Connection
+                                                    , Query (fromQuery)
+                                                    )
+
 import qualified Database.SQLite.Simple             as Sql
 
 import qualified Database.SQLite.SimpleErrors       as Sql
+
 import           Database.SQLite.SimpleErrors.Types (SQLiteResponse)
 
 import           Level06.AppM                       (App, liftEither)
 
-import           Level06.Types                      (Comment, CommentText,
-                                                     Error (DBError), Topic,
-                                                     fromDBComment,
-                                                     getCommentText, getTopic,
-                                                     mkTopic)
+import           Level06.Types                      ( Comment
+                                                    , CommentText
+                                                    , Error (DBError)
+                                                    , Topic
+                                                    , fromDBComment
+                                                    , getCommentText
+                                                    , getTopic
+                                                    , mkTopic
+                                                    )
 
 -- We have a data type to simplify passing around the information we need to run
 -- our database queries. This also allows things to change over time without
@@ -83,7 +90,8 @@ getComments db t = do
   -- To be doubly and triply sure we've no garbage in our response, we take care
   -- to convert our DB storage type into something we're going to share with the
   -- outside world. Checking again for things like empty Topic or CommentText values.
-  runDB (traverse fromDBComment) $ Sql.query (dbConn db) q (Sql.Only . getTopic $ t)
+  runDB (traverse fromDBComment) $
+    Sql.query (dbConn db) q (Sql.Only . getTopic $ t)
 
 addCommentToTopic
   :: FirstAppDB
@@ -95,15 +103,15 @@ addCommentToTopic db t c = do
   nowish <- liftIO getCurrentTime
   -- Note the triple, matching the number of values we're trying to insert, plus
   -- one for the table name.
-  let q =
-        -- Remember that the '?' are order dependent so if you get your input
-        -- parameters in the wrong order, the types won't save you here. More on that
-        -- sort of goodness later.
-        "INSERT INTO comments (topic,comment,time) VALUES (?,?,?)"
+  -- Remember that the '?' are order dependent so if you get your input
+  -- parameters in the wrong order, the types won't save you here. More on that
+  -- sort of goodness later.
+  let q = "INSERT INTO comments (topic,comment,time) VALUES (?,?,?)"
   -- We use the execute function this time as we don't care about anything
   -- that is returned. The execute function will still return the number of rows
   -- affected by the query, which in our case should always be 1.
-  runDB Right $ Sql.execute (dbConn db) q (getTopic t, getCommentText c, nowish)
+  runDB Right $
+    Sql.execute (dbConn db) q (getTopic t, getCommentText c, nowish)
   -- An alternative is to write a returning query to get the Id of the DBComment
   -- we've created. We're being lazy (hah!) for now, so assume awesome and move on.
 
@@ -113,7 +121,8 @@ getTopics
 getTopics db =
   let q = "SELECT DISTINCT topic FROM comments"
   in
-    runDB (traverse ( mkTopic . Sql.fromOnly )) $ Sql.query_ (dbConn db) q
+    runDB (traverse ( mkTopic . Sql.fromOnly )) $
+      Sql.query_ (dbConn db) q
 
 deleteTopic
   :: FirstAppDB
@@ -122,4 +131,5 @@ deleteTopic
 deleteTopic db t =
   let q = "DELETE FROM comments WHERE topic = ?"
   in
-    runDB Right $ Sql.execute (dbConn db) q (Sql.Only . getTopic $ t)
+    runDB Right $
+      Sql.execute (dbConn db) q (Sql.Only . getTopic $ t)

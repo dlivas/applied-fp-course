@@ -53,7 +53,7 @@ runApp = runAppM
 instance Functor (AppM e) where
   fmap :: (a -> b) -> AppM e a -> AppM e b
   fmap f (AppM io) =
-    AppM (fmap f <$> io)
+    AppM $ fmap f <$> io
 
 instance Applicative (AppM e) where
   pure :: a -> AppM e a

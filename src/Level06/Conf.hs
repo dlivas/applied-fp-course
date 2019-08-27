@@ -33,8 +33,8 @@ defaultConf
   :: PartialConf
 defaultConf =
   PartialConf
-    ((Last . Just . Port) 3000)
-    ((Last . Just . DBFilePath) "app_db.db")
+    (Last . Just . Port $ 3000)
+    (Last . Just . DBFilePath $ "app_db.db")
 
 -- | We need something that will take our PartialConf and see if can finally build
 -- a complete ``Conf`` record. Also we need to highlight any missing values by
@@ -42,12 +42,11 @@ defaultConf =
 makeConfig
   :: PartialConf
   -> Either ConfigError Conf
-makeConfig (PartialConf (Last Nothing) _) =
-  Left MissingPort
-makeConfig (PartialConf _ (Last Nothing)) =
-  Left MissingDBPath
-makeConfig (PartialConf (Last (Just port')) (Last (Just dbFilePath'))) =
-  Right $ Conf port' dbFilePath'
+makeConfig (PartialConf (Last portConf) (Last pathConf)) =
+  case (portConf, pathConf) of
+    (Nothing, _)                    -> Left MissingPort
+    (_, Nothing)                    -> Left MissingDBPath
+    (Just port', Just dbFilePath')  -> Right $ Conf port' dbFilePath'
 
 -- | This is the function we'll actually export for building our configuration.
 -- Since it wraps all our efforts to read information from the command line, and

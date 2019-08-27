@@ -191,7 +191,6 @@ confPortToWai =
 data ConfigError
   = BadConfFile DecodeError
   | BadConfigFilePath IOError
-  -- | BadJSONDecoded String
   | MissingPort
   | MissingDBPath
   deriving Show
