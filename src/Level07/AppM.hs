@@ -72,7 +72,7 @@ instance Applicative (AppM e) where
       \e -> do
         f <- f' e
         a <- a' e
-        return (f <*> a)
+        return $ f <*> a
 
 instance Monad (AppM e) where
   return :: a -> AppM e a
