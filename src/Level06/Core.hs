@@ -127,8 +127,8 @@ prepareAppReqs =
   where
     appConf :: IO (Either StartUpError Conf)
     appConf = do
-      conf <- runAppM (Conf.parseOptions "files/appconfig.json")
-      (return . first ConfErr) conf
+      conf <- runAppM $ Conf.parseOptions "files/appconfig.json"
+      return . first ConfErr $ conf
 
     dbInit = DB.initDB . getDBFilePath . dbFilePath
  
