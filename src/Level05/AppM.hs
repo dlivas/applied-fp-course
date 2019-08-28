@@ -79,7 +79,7 @@ instance Functor AppM where
 instance Applicative AppM where
   pure :: a -> AppM a
   pure =
-    liftEither . Right
+    AppM . return . Right
 
   (<*>) :: AppM (a -> b) -> AppM a -> AppM b
   AppM io'e'a2b <*> AppM io'e'a =
@@ -96,34 +96,25 @@ instance Monad AppM where
 
   (>>=) :: AppM a -> (a -> AppM b) -> AppM b
   AppM io'e'a >>= f =
-    let
-      io'e'b =
-        do
-          e'a <- io'e'a
-          either (return . Left) (runAppM . f) e'a
-    in
-      AppM io'e'b
+    AppM $
+      io'e'a >>= runAppM . either throwError f
 
 instance MonadIO AppM where
   liftIO :: IO a -> AppM a
   liftIO io'a =
-    AppM
-      (do
-        a <- io'a
-        runAppM $ return a)
+    AppM $
+      io'a >>= runAppM . return
 
 instance MonadError Error AppM where
   throwError :: Error -> AppM a
   throwError =
-     liftEither . Left
+    AppM . return . Left
 
   catchError :: AppM a -> (Error -> AppM a) -> AppM a
-  catchError (AppM io'e'a) e2am =
-    AppM
-      (do
-        e'a <- io'e'a
-        either (runAppM . e2am) (pure . Right) e'a)
-
+  catchError (AppM io) onError =
+    AppM $
+      io >>= runAppM . either onError pure
+    
 -- This is a helper function that will `lift` an Either value into our new AppM
 -- by applying `throwError` to the Left value, and using `pure` to lift the
 -- Right value into the AppM.
@@ -135,6 +126,6 @@ liftEither
   :: Either Error a
   -> AppM a
 liftEither =
-  AppM . return
+  either throwError pure
 
 -- Go to 'src/Level05/DB.hs' next.

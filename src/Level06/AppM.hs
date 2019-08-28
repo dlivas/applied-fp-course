@@ -58,7 +58,7 @@ instance Functor (AppM e) where
 instance Applicative (AppM e) where
   pure :: a -> AppM e a
   pure  =
-    liftEither . Right
+    AppM . return . Right
 
   (<*>) :: AppM e (a -> b) -> AppM e a -> AppM e b
   AppM io' <*> AppM io =
@@ -75,8 +75,7 @@ instance Monad (AppM e) where
   (>>=) :: AppM e a -> (a -> AppM e b) -> AppM e b
   AppM io >>= f  =
     AppM $
-      io >>=
-        runAppM . either throwError f
+      io >>= runAppM . either throwError f
 
 instance MonadIO (AppM e) where
   liftIO :: IO a -> AppM e a
@@ -86,24 +85,20 @@ instance MonadIO (AppM e) where
 instance MonadError e (AppM e) where
   throwError :: e -> AppM e a
   throwError =
-    liftEither . Left
+    AppM . return . Left
 
   catchError :: AppM e a -> (e -> AppM e a) -> AppM e a
   catchError (AppM io) onError =
     AppM $
-      io >>=
-        either
-          (runAppM . onError)
-          (const io)
-    
+      io >>= runAppM . either onError pure
+
 -- The 'Bifunctor' instance for 'Either' has proved useful several times
 -- already. Now that our 'AppM' exposes both type variables that are used in our
 -- 'Either', we can define a Bifunctor instance and reap similar benefits.
 instance Bifunctor AppM where
   bimap :: (e -> d) -> (a -> b) -> AppM e a -> AppM d b
   bimap f' f (AppM io) =
-    AppM $
-      bimap f' f <$> io
+    AppM $ bimap f' f <$> io
 
 -- This is a helper function that will `lift` an Either value into our new AppM
 -- by applying `throwError` to the Left value, and using `pure` to lift the
@@ -114,4 +109,4 @@ instance Bifunctor AppM where
 --
 liftEither :: Either e a -> AppM e a
 liftEither =
-  AppM . return
+    either throwError pure
