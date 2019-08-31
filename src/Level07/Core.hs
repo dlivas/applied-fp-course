@@ -108,7 +108,7 @@ runApplication = do
 -- 'mtl' on Hackage: https://hackage.haskell.org/package/mtl
 --
 prepareAppReqs :: ExceptT StartUpError IO Env
-prepareAppReqs = -- error ""
+prepareAppReqs =
   -- You may copy your previous implementation of this function and try refactoring it. On the
   -- condition you have to explain to the person next to you what you've done and why it works.
   do
@@ -119,14 +119,14 @@ prepareAppReqs = -- error ""
       appConf :: ExceptT StartUpError IO Conf
       appConf =
         ExceptT $ do
-          conf <- Conf.parseOptions "files/appconfig.json"
-          return (first ConfErr conf)
+          confE <- Conf.parseOptions "files/appconfig.json"
+          return $ first ConfErr confE
 
       dbInit :: Conf -> ExceptT StartUpError IO DB.FirstAppDB
       dbInit c =
         ExceptT $ do
-          conn <- DB.initDB $ dbFilePath c
-          return (first DBInitErr conn)
+          connE <- DB.initDB $ dbFilePath c
+          return $ first DBInitErr connE
 
 -- | Now that our request handling and response creating functions operate
 -- within our App context, we need to run the App to get our IO action out
