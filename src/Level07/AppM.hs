@@ -14,7 +14,9 @@ module Level07.AppM
 import           Control.Monad          (join)
 import           Control.Monad.Except   (MonadError (..))
 import           Control.Monad.IO.Class (MonadIO (..))
-import           Control.Monad.Reader   (MonadReader (..))
+import           Control.Monad.Reader           ( MonadReader(..)
+                                                , asks
+                                                )
 
 import           Data.Text              (Text)
 
@@ -116,9 +118,10 @@ instance MonadReader Env (AppM e) where
   -- Return the current Env from the AppM.
   ask :: AppM e Env
   ask =
-    AppM $ join (runAppM . pure)
-    -- AppM $ runAppM . pure <*> id
+    AppM $ return . Right
     -- AppM $ \env -> (runAppM . pure) env env 
+    -- AppM $ join (runAppM . pure)
+    -- AppM $ runAppM . pure <*> id
 
   -- Run a (AppM e) inside of the current one using a modified Env value.
   local :: (Env -> Env) -> AppM e a -> AppM e a
@@ -127,14 +130,19 @@ instance MonadReader Env (AppM e) where
 
   -- This will run a function on the current Env and return the result.
   -- reader :: (Env -> a) -> AppM e a
-  -- reader f =
+  -- reader =
     -- AppM $ return . Right . f
     ------- actual implemenntation
     ------- (http://hackage.haskell.org/package/mtl-2.2.2/docs/src/Control.Monad.Reader.Class.html#ask)
     ------- follows:
     -- do
-    --   r <- ask
-    --   return (f r)
+    --   env <- ask
+    --   return $ f env
+    ------- OR
+    -- f <$> ask
+    ------- OR
+  -- reader = 
+  --   asks 
 
 instance MonadIO (AppM e) where
   -- Take a type of 'IO a' and lift it into our (AppM e).
