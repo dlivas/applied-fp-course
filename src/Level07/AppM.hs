@@ -8,8 +8,10 @@ module Level07.AppM
   , Env (..)
   , liftEither
   , runApp
+  , defaultEnvLoggingFn
   ) where
 
+import           Control.Monad          (join)
 import           Control.Monad.Except   (MonadError (..))
 import           Control.Monad.IO.Class (MonadIO (..))
 import           Control.Monad.Reader   (MonadReader (..))
@@ -34,6 +36,13 @@ data Env = Env
   , envConfig    :: Conf
   , envDB        :: FirstAppDB
   }
+
+defaultEnvLoggingFn :: Text -> App ()
+defaultEnvLoggingFn t =
+  AppM $
+    \_ -> do
+      print t
+      return  (Right  ())
 
 -- | It would be nice to remove the need to pass around our Env to every
 -- function that needs it. Wouldn't it be great to have our functions run where
@@ -64,7 +73,7 @@ runApp = runAppM
 instance Applicative (AppM e) where
   pure :: a -> AppM e a
   pure =
-   liftEither . Right
+    AppM . const . return . Right
 
   (<*>) :: AppM e (a -> b) -> AppM e a -> AppM e b
   AppM f' <*> AppM a' = 
@@ -92,7 +101,7 @@ instance Monad (AppM e) where
 instance MonadError e (AppM e) where
   throwError :: e -> AppM e a
   throwError =
-    liftEither . Left
+    AppM . const . return . Left
 
   catchError :: AppM e a -> (e -> AppM e a) -> AppM e a
   catchError app errorHandler =
@@ -107,7 +116,9 @@ instance MonadReader Env (AppM e) where
   -- Return the current Env from the AppM.
   ask :: AppM e Env
   ask =
-    AppM $ runAppM . pure <*> id
+    AppM $ join (runAppM . pure)
+    -- AppM $ runAppM . pure <*> id
+    -- AppM $ \env -> (runAppM . pure) env env 
 
   -- Run a (AppM e) inside of the current one using a modified Env value.
   local :: (Env -> Env) -> AppM e a -> AppM e a
@@ -115,15 +126,21 @@ instance MonadReader Env (AppM e) where
     AppM $ runAppM a . f
 
   -- This will run a function on the current Env and return the result.
-  reader :: (Env -> a) -> AppM e a
-  reader f =
-    AppM $ return . Right . f
+  -- reader :: (Env -> a) -> AppM e a
+  -- reader f =
+    -- AppM $ return . Right . f
+    ------- actual implemenntation
+    ------- (http://hackage.haskell.org/package/mtl-2.2.2/docs/src/Control.Monad.Reader.Class.html#ask)
+    ------- follows:
+    -- do
+    --   r <- ask
+    --   return (f r)
 
 instance MonadIO (AppM e) where
   -- Take a type of 'IO a' and lift it into our (AppM e).
   liftIO :: IO a -> AppM e a
-  liftIO a' =
-    AppM $ const $ Right <$> a'
+  liftIO io =
+    AppM . const $ Right <$> io
 
 -- | This is a helper function that will `lift` an Either value into our new AppM
 -- by applying `throwError` to the Left value, and using `pure` to lift the
@@ -134,6 +151,6 @@ instance MonadIO (AppM e) where
 --
 liftEither :: Either e a -> AppM e a
 liftEither =
-  AppM . const . return
+  either throwError pure
 
 -- Move on to ``src/Level07/DB.hs`` after this

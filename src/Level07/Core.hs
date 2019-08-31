@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Level07.Core
   ( runApplication
@@ -12,15 +13,21 @@ import           Control.Monad                      (join)
 import           Control.Monad.IO.Class             (liftIO)
 import           Control.Monad.Reader               (asks)
 
-import           Network.Wai                        (Application, Request,
-                                                     Response, pathInfo,
-                                                     requestMethod,
-                                                     strictRequestBody)
+import           Network.Wai                        ( Application
+                                                    , Request
+                                                    , Response
+                                                    , pathInfo
+                                                    , requestMethod
+                                                    , strictRequestBody
+                                                    )
+                                                    
 import           Network.Wai.Handler.Warp           (run)
 
 import           Data.Bifunctor                     (first)
-import           Data.Either                        (Either (Left, Right),
-                                                     either)
+
+import           Data.Either                        ( Either (Left, Right)
+                                                    , either
+                                                    )
 
 import           Data.Text                          (Text)
 import qualified Data.Text                          as Text
@@ -31,7 +38,9 @@ import qualified Data.ByteString.Lazy.Char8         as LBS
 
 import           Database.SQLite.SimpleErrors.Types (SQLiteResponse)
 
-import           System.IO                          (stderr)
+import           System.IO                          ( stderr
+                                                    , print
+                                                    )
 
 import qualified Waargonaut.Encode                  as E
 
@@ -39,19 +48,31 @@ import qualified Level07.Conf                       as Conf
 import qualified Level07.DB                         as DB
 
 import qualified Level07.Responses                  as Res
-import           Level07.Types                      (Conf, ConfigError,
-                                                     ContentType (PlainText),
-                                                     Error (..), RqType (..),
-                                                     confPortToWai,
-                                                     encodeComment, encodeTopic,
-                                                     mkCommentText, mkTopic)
 
-import           Level07.AppM                       (App, Env (..), liftEither,
-                                                     runApp)
+import           Level07.Types                      ( Conf(..)
+                                                    , ConfigError
+                                                    , ContentType (PlainText)
+                                                    , Error (..)
+                                                    , RqType (..)
+                                                    , confPortToWai
+                                                    , encodeComment
+                                                    , encodeTopic
+                                                    , mkCommentText
+                                                    , mkTopic
+                                                    )
+
+import           Level07.AppM                       ( App
+                                                    , Env (..)
+                                                    , liftEither
+                                                    , runApp
+                                                    , defaultEnvLoggingFn
+                                                    )
 
 -- | We're going to use the `mtl` ExceptT monad transformer to make the loading of
 -- our `Conf` a bit more straight-forward.
-import           Control.Monad.Except               (ExceptT (..), runExceptT)
+import           Control.Monad.Except               ( ExceptT (..)
+                                                    , runExceptT
+                                                    )
 
 -- | Our start-up is becoming more complicated and could fail in new and
 -- interesting ways. But we also want to be able to capture these errors in a
@@ -69,9 +90,13 @@ runApplication = do
     runWithDBConn env =
       appWithDB env >> DB.closeDB (envDB env)
 
-    appWithDB env = Ex.finally
-      (run ( confPortToWai . envConfig $ env ) (app env))
-      $ DB.closeDB (envDB env)
+    appWithDB env =
+      Ex.finally 
+        (do
+          let p = confPortToWai . envConfig $ env
+          print ("===> Server running on port " ++ show p ++ "...")
+          run p (app env))
+        $ DB.closeDB (envDB env)
 
 -- | Our AppM is no longer useful for implementing this function. Can you explain why?
 --
@@ -83,9 +108,25 @@ runApplication = do
 -- 'mtl' on Hackage: https://hackage.haskell.org/package/mtl
 --
 prepareAppReqs :: ExceptT StartUpError IO Env
-prepareAppReqs = error "prepareAppReqs not reimplemented with ExceptT"
+prepareAppReqs = -- error ""
   -- You may copy your previous implementation of this function and try refactoring it. On the
   -- condition you have to explain to the person next to you what you've done and why it works.
+  do
+    conf <- appConf
+    conn <- dbInit conf
+    return $ Env defaultEnvLoggingFn conf conn
+  where
+      appConf :: ExceptT StartUpError IO Conf
+      appConf =
+        ExceptT $ do
+          conf <- Conf.parseOptions "files/appconfig.json"
+          return (first ConfErr conf)
+
+      dbInit :: Conf -> ExceptT StartUpError IO DB.FirstAppDB
+      dbInit c =
+        ExceptT $ do
+          conn <- DB.initDB $ dbFilePath c
+          return (first DBInitErr conn)
 
 -- | Now that our request handling and response creating functions operate
 -- within our App context, we need to run the App to get our IO action out
@@ -94,8 +135,11 @@ prepareAppReqs = error "prepareAppReqs not reimplemented with ExceptT"
 app
   :: Env
   -> Application
-app =
-  error "Copy your completed 'app' from the previous level and refactor it here"
+app env rq cb =
+  runApp (handleRequest =<< mkRequest rq) env >>= cb . handleRespErr
+  where
+    handleRespErr :: Either Error Response -> Response
+    handleRespErr = either mkErrorResponse id
 
 handleRequest
   :: RqType
