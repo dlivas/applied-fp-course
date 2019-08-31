@@ -1,5 +1,5 @@
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE OverloadedStrings #-}
+
 module Level07.Core
   ( runApplication
   , prepareAppReqs
