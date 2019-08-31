@@ -109,9 +109,9 @@ instance MonadError e (AppM e) where
   catchError app errorHandler =
     AppM $
       \env -> do
-        a <- runAppM app env
+        aE <- runAppM app env
         runAppM
-          (either errorHandler (const app) a)
+          (either errorHandler pure aE)
           env
     
 instance MonadReader Env (AppM e) where
