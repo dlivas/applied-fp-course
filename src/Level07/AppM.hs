@@ -75,7 +75,8 @@ runApp = runAppM
 instance Applicative (AppM e) where
   pure :: a -> AppM e a
   pure =
-    AppM . const . return . Right
+    AppM . pure . pure . pure
+    -- AppM . const . return . Right
 
   (<*>) :: AppM e (a -> b) -> AppM e a -> AppM e b
   AppM f' <*> AppM a' = 
@@ -94,11 +95,13 @@ instance Monad (AppM e) where
   -- care of passing the Env from one function to the next whilst preserving the
   -- error handling behaviour.
   (>>=) :: AppM e a -> (a -> AppM e b) -> AppM e b
-  AppM a' >>= f =
+  AppM aIO >>= f =
     AppM $
-      \e -> do
-        a <- a' e
-        runAppM (either throwError f a) e
+      \env -> do
+        aE <- aIO env
+        runAppM
+          (either throwError f aE)
+          env
 
 instance MonadError e (AppM e) where
   throwError :: e -> AppM e a
@@ -106,10 +109,10 @@ instance MonadError e (AppM e) where
     AppM . const . return . Left
 
   catchError :: AppM e a -> (e -> AppM e a) -> AppM e a
-  catchError app errorHandler =
+  catchError (AppM aIO) errorHandler =
     AppM $
       \env -> do
-        aE <- runAppM app env
+        aE <- aIO env
         runAppM
           (either errorHandler pure aE)
           env
@@ -118,15 +121,16 @@ instance MonadReader Env (AppM e) where
   -- Return the current Env from the AppM.
   ask :: AppM e Env
   ask =
-    AppM $ return . Right
+    AppM $ pure . pure
+    -- AppM $ return . Right
     -- AppM $ \env -> (runAppM . pure) env env 
     -- AppM $ join (runAppM . pure)
     -- AppM $ runAppM . pure <*> id
 
   -- Run a (AppM e) inside of the current one using a modified Env value.
   local :: (Env -> Env) -> AppM e a -> AppM e a
-  local f a =
-    AppM $ runAppM a . f
+  local f (AppM aIO) =
+    AppM $ aIO . f
 
   -- This will run a function on the current Env and return the result.
   -- reader :: (Env -> a) -> AppM e a
@@ -147,8 +151,8 @@ instance MonadReader Env (AppM e) where
 instance MonadIO (AppM e) where
   -- Take a type of 'IO a' and lift it into our (AppM e).
   liftIO :: IO a -> AppM e a
-  liftIO io =
-    AppM . const $ Right <$> io
+  liftIO =
+    AppM . const . (Right <$>)
 
 -- | This is a helper function that will `lift` an Either value into our new AppM
 -- by applying `throwError` to the Left value, and using `pure` to lift the
