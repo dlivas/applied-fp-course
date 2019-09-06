@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Level07.DB
+module Level08.DB
   ( FirstAppDB (FirstAppDB)
   , initDB
   , closeDB
@@ -10,7 +10,7 @@ module Level07.DB
   ) where
 
 import           Control.Monad.IO.Class             (liftIO)
-import           Control.Monad.Reader               (asks)
+import           Control.Monad.Reader               -- (asks)
 
 import           Data.Bifunctor                     (first)
 import           Data.Text                          (Text)
@@ -29,13 +29,13 @@ import qualified Database.SQLite.Simple             as Sql
 import qualified Database.SQLite.SimpleErrors       as Sql
 import           Database.SQLite.SimpleErrors.Types (SQLiteResponse)
 
-import           Level07.AppM                       ( App
+import           Level08.AppM                       ( App
                                                     , AppM (..)
                                                     , Env (envDB)
                                                     , liftEither
                                                     )
 
-import           Level07.Types                      ( Comment
+import           Level08.Types                      ( Comment
                                                     , CommentText
                                                     , DBFilePath (getDBFilePath)
                                                     , Error (DBError)
