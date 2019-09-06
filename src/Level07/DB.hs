@@ -72,17 +72,22 @@ initDB fp = Sql.runDBAction $ do
     createTableQ =
       "CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, topic TEXT, comment TEXT, time INTEGER)"
 
-getDBConn
-  :: App Connection
+getDBConn ::
+  App Connection
 getDBConn =
-  AppM $ return . Right . dbConn . envDB
+  asks $ dbConn . envDB
+  -- that is:
+  -- AppM $ return . Right . dbConn . envDB
 
-runDB
-  :: (a -> Either Error b)
+runDB ::
+  (a -> Either Error b)
   -> (Connection -> IO a)
   -> App b
 runDB f cf =
-  AppM $ fmap f . cf . dbConn . envDB
+  getDBConn
+  >>= liftIO . cf
+  >>= liftEither . f
+  -- AppM $ fmap f . cf . dbConn . envDB
 
 getComments
   :: Topic
