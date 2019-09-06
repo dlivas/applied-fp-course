@@ -102,7 +102,7 @@ mkViewRequest
   :: T.Text
   -> Either Error RqType
 mkViewRequest =
-  (ViewRq <$>) . mkTopic
+  fmap ViewRq . mkTopic
 
 mkListRequest
   :: Either Error RqType
