@@ -115,15 +115,13 @@ prepareAppReqs = do
   where
     appConf :: ExceptT StartUpError IO Conf
     appConf =
-      ExceptT $ do
-        confE <- Conf.parseOptions "files/appconfig.json"
-        return $ first ConfErr confE
+      ExceptT $
+      first ConfErr <$> Conf.parseOptions "files/appconfig.json"
 
     dbInit :: Conf -> ExceptT StartUpError IO DB.FirstAppDB
     dbInit c =
-      ExceptT $ do
-        connE <- DB.initDB $ dbFilePath c
-        return $ first DBInitErr connE
+      ExceptT $
+      first DBInitErr <$> DB.initDB (dbFilePath c)
 
 -- | Now that our request handling and response creating functions operate
 -- within our App context, we need to run the App to get our IO action out

@@ -116,17 +116,36 @@ prepareAppReqs =
     conn <- dbInit conf
     return $ Env defaultEnvLoggingFn conf conn
   where
-      appConf :: ExceptT StartUpError IO Conf
-      appConf =
-        ExceptT $ do
-          confE <- Conf.parseOptions "files/appconfig.json"
-          return $ first ConfErr confE
+    appConf :: ExceptT StartUpError IO Conf
+    appConf =
+      ExceptT $
+        first ConfErr <$> Conf.parseOptions "files/appconfig.json"
 
-      dbInit :: Conf -> ExceptT StartUpError IO DB.FirstAppDB
-      dbInit c =
-        ExceptT $ do
-          connE <- DB.initDB $ dbFilePath c
-          return $ first DBInitErr connE
+    dbInit :: Conf -> ExceptT StartUpError IO DB.FirstAppDB
+    dbInit c =
+      ExceptT $
+        first DBInitErr <$> DB.initDB (dbFilePath c)
+
+-- prepareAppReqs :: ExceptT StartUpError IO Env
+-- prepareAppReqs =
+--   -- You may copy your previous implementation of this function and try refactoring it. On the
+--   -- condition you have to explain to the person next to you what you've done and why it works.
+--   do
+--     conf <- appConf
+--     conn <- dbInit conf
+--     return $ Env defaultEnvLoggingFn conf conn
+--   where
+--       appConf :: ExceptT StartUpError IO Conf
+--       appConf =
+--         ExceptT $ do
+--           confE <- Conf.parseOptions "files/appconfig.json"
+--           return $ first ConfErr confE
+
+--       dbInit :: Conf -> ExceptT StartUpError IO DB.FirstAppDB
+--       dbInit c =
+--         ExceptT $ do
+--           connE <- DB.initDB $ dbFilePath c
+--           return $ first DBInitErr connE
 
 -- | Now that our request handling and response creating functions operate
 -- within our App context, we need to run the App to get our IO action out
