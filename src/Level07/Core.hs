@@ -91,12 +91,14 @@ runApplication = do
       appWithDB env >> DB.closeDB (envDB env)
 
     appWithDB env =
-      Ex.finally 
-        (do
-          let p = confPortToWai . envConfig $ env
-          print ("===> Server running on port " ++ show p ++ "...")
-          run p (app env))
+      Ex.finally
+        (runService env)
         $ DB.closeDB (envDB env)
+
+    runService env = do
+      let p = confPortToWai . envConfig $ env
+      print ("===> Server running on port " ++ show p ++ "...")
+      run p (app env)
 
 -- | Our AppM is no longer useful for implementing this function. Can you explain why?
 --

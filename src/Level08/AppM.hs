@@ -49,7 +49,8 @@ runApp = runAppM
 
 instance Applicative (AppM e) where
   pure :: a -> AppM e a
-  pure = AppM . pure . pure . pure -- AppM . const . return . Right
+  pure =
+    AppM . pure . pure . pure -- AppM . const . return . Right
 
   (<*>) :: AppM e (a -> b) -> AppM e a -> AppM e b
   AppM fIO <*> AppM aIO =

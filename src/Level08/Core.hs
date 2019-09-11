@@ -92,11 +92,14 @@ runApplication = do
 
     appWithDB env =
       Ex.finally 
-        (do
-          let p = confPortToWai . envConfig $ env
-          print ("===> Server running on port " ++ show p ++ "...")
-          run p (app env))
+        (runService env)
         $ DB.closeDB (envDB env)
+
+    runService env =
+      do
+        let p = confPortToWai . envConfig $ env
+        print ("===> Server running on port " ++ show p ++ "...")
+        run p (app env)
 
 -- | Our AppM is no longer useful for implementing this function. Can you explain why?
 --
@@ -134,13 +137,13 @@ app env rq cb =
   runApp processRequest env
   >>= cb . handleRespErr
   where
-    handleRespErr :: Either Error Response -> Response
-    handleRespErr =
-      either mkErrorResponse id
-
     processRequest :: App Response
     processRequest =
       mkRequest rq >>= handleRequest
+
+    handleRespErr :: Either Error Response -> Response
+    handleRespErr =
+      either mkErrorResponse id
 
 handleRequest
   :: RqType
