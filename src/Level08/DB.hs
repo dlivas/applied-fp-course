@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+
 module Level08.DB
   ( FirstAppDB (FirstAppDB)
   , initDB
@@ -8,6 +9,9 @@ module Level08.DB
   , getTopics
   , deleteTopic
   ) where
+
+import           Control.Lens                       hiding ( element )
+import           Control.Lens.TH
 
 import           Control.Monad.IO.Class             (liftIO)
 import           Control.Monad.Reader               -- (asks)
@@ -37,7 +41,7 @@ import           Level08.AppM                       ( App
 
 import           Level08.Types                      ( Comment
                                                     , CommentText
-                                                    , DBFilePath (getDBFilePath)
+                                                    , DBFilePath
                                                     , Error (DBError)
                                                     , FirstAppDB (FirstAppDB, dbConn)
                                                     , Topic
@@ -55,13 +59,13 @@ closeDB =
   Sql.close . dbConn
 
 initDB
-  :: DBFilePath
+  :: FilePath
   -> IO ( Either SQLiteResponse FirstAppDB )
 initDB fp = Sql.runDBAction $ do
   -- Initialise the connection to the DB...
   -- - What could go wrong here?
   -- - What haven't we be told in the types?
-  con <- Sql.open ( getDBFilePath fp )
+  con <- Sql.open fp
   -- Initialise our one table, if it's not there already
   _ <- Sql.execute_ con createTableQ
   pure $ FirstAppDB con

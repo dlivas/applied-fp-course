@@ -50,6 +50,7 @@ import qualified Level08.DB                         as DB
 import qualified Level08.Responses                  as Res
 
 import           Level08.Types                      ( Conf(..)
+                                                    , getDBFilePath'
                                                     , ConfigError
                                                     , ContentType (PlainText)
                                                     , Error (..)
@@ -124,7 +125,7 @@ prepareAppReqs = do
     dbInit :: Conf -> ExceptT StartUpError IO DB.FirstAppDB
     dbInit c =
       ExceptT $
-      first DBInitErr <$> DB.initDB (dbFilePath c)
+      first DBInitErr <$> DB.initDB (getDBFilePath' c)
 
 -- | Now that our request handling and response creating functions operate
 -- within our App context, we need to run the App to get our IO action out

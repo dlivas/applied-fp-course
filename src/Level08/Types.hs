@@ -1,4 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 module Level08.Types
   ( Error (..)
   , ConfigError (..)
@@ -20,9 +22,15 @@ module Level08.Types
   , renderContentType
   , fromDBComment
   , confPortToWai
+  , getDBFilePath'
   , encodeComment
   , encodeTopic
   ) where
+
+
+import           Control.Lens                       hiding ( element )
+import           Control.Lens.TH
+
 
 import           System.IO.Error                    (IOError)
 
@@ -126,21 +134,28 @@ renderContentType JSON      = "application/json"
 -- technique you choose is a matter for your specific needs and preference.
 --
 newtype Port = Port
-  { getPort :: Word16 }
+  { _getPort :: Word16 }
   deriving (Eq, Show)
 
 newtype DBFilePath = DBFilePath
-  { getDBFilePath :: FilePath }
+  { _getDBFilePath :: FilePath }
   deriving (Eq, Show)
 
 -- The ``Conf`` type will need:
 -- - A customisable port number: ``Port``
 -- - A filepath for our SQLite database: ``DBFilePath``
 data Conf = Conf
-  { port       :: Port
-  , dbFilePath :: DBFilePath
+  { _port       :: Port
+  , _dbFilePath :: DBFilePath
   }
   deriving Eq
+
+$(makeLenses ''Conf)
+$(makeLenses ''Port)
+$(makeLenses ''DBFilePath)
+
+getDBFilePath' :: Conf -> FilePath
+getDBFilePath' = view (dbFilePath . getDBFilePath)
 
 -- We're storing our Port as a Word16 to be more precise and prevent invalid
 -- values from being used in our application. However Wai is not so stringent.
@@ -150,7 +165,8 @@ confPortToWai
   :: Conf
   -> Int
 confPortToWai =
-  fromIntegral . getPort . port
+  fromIntegral . view (port . getPort)
+  -- fromIntegral . getPort . port
 
 -- Similar to when we were considering our application types, leave this empty
 -- for now and add to it as you go.
