@@ -63,13 +63,13 @@ $(makeLenses ''Port)
 $(makeLenses ''DBFilePath)
 
 getDBFilePathE :: Env -> FilePath
-getDBFilePathE = view (envConfig . dbFilePath . getDBFilePath)
+getDBFilePathE = (^. envConfig . dbFilePath . getDBFilePath)
 
 getDBFilePathC :: Conf -> FilePath
-getDBFilePathC = view (dbFilePath . getDBFilePath)
+getDBFilePathC = (^. dbFilePath . getDBFilePath)
 
 confPortToWaiE :: Env -> Int
-confPortToWaiE = fromIntegral . view (envConfig . port . getPort)
+confPortToWaiE = fromIntegral . (^. envConfig . port . getPort)
 
 instance Applicative (AppM e) where
   pure :: a -> AppM e a
