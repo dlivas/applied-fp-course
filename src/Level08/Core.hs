@@ -50,12 +50,11 @@ import qualified Level08.DB                         as DB
 import qualified Level08.Responses                  as Res
 
 import           Level08.Types                      ( Conf(..)
-                                                    , getDBFilePath'
+                                                    -- , getDBFilePath'
                                                     , ConfigError
                                                     , ContentType (PlainText)
                                                     , Error (..)
                                                     , RqType (..)
-                                                    , confPortToWai
                                                     , encodeComment
                                                     , encodeTopic
                                                     , mkCommentText
@@ -67,6 +66,8 @@ import           Level08.AppM                       ( App
                                                     , liftEither
                                                     , runApp
                                                     , defaultEnvLoggingFn
+                                                    , confPortToWaiE
+                                                    , getDBFilePathC
                                                     )
 
 -- | We're going to use the `mtl` ExceptT monad transformer to make the loading of
@@ -98,7 +99,7 @@ runApplication = do
 
     runService env =
       do
-        let p = confPortToWai . envConfig $ env
+        let p = confPortToWaiE env
         print ("===> Server running on port " ++ show p ++ "...")
         run p (app env)
 
@@ -125,7 +126,7 @@ prepareAppReqs = do
     dbInit :: Conf -> ExceptT StartUpError IO DB.FirstAppDB
     dbInit c =
       ExceptT $
-      first DBInitErr <$> DB.initDB (getDBFilePath' c)
+      first DBInitErr <$> DB.initDB (getDBFilePathC c)
 
 -- | Now that our request handling and response creating functions operate
 -- within our App context, we need to run the App to get our IO action out

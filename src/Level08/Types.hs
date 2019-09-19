@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 module Level08.Types
   ( Error (..)
@@ -21,16 +20,9 @@ module Level08.Types
   , getCommentText
   , renderContentType
   , fromDBComment
-  , confPortToWai
-  , getDBFilePath'
   , encodeComment
   , encodeTopic
   ) where
-
-
-import           Control.Lens                       hiding ( element )
-import           Control.Lens.TH
-
 
 import           System.IO.Error                    (IOError)
 
@@ -149,24 +141,6 @@ data Conf = Conf
   , _dbFilePath :: DBFilePath
   }
   deriving Eq
-
-$(makeLenses ''Conf)
-$(makeLenses ''Port)
-$(makeLenses ''DBFilePath)
-
-getDBFilePath' :: Conf -> FilePath
-getDBFilePath' = view (dbFilePath . getDBFilePath)
-
--- We're storing our Port as a Word16 to be more precise and prevent invalid
--- values from being used in our application. However Wai is not so stringent.
--- To accommodate this and make our lives a bit easier, we will write this
--- helper function to take ``Conf`` value and convert it to an ``Int``.
-confPortToWai
-  :: Conf
-  -> Int
-confPortToWai =
-  fromIntegral . view (port . getPort)
-  -- fromIntegral . getPort . port
 
 -- Similar to when we were considering our application types, leave this empty
 -- for now and add to it as you go.

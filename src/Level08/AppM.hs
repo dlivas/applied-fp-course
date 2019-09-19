@@ -2,6 +2,8 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE InstanceSigs          #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 module Level08.AppM
   ( AppM(..)
   , App
@@ -9,8 +11,14 @@ module Level08.AppM
   , liftEither
   , runApp
   , defaultEnvLoggingFn
+  , getDBFilePathE
+  , confPortToWaiE
+  , getDBFilePathC
   )
 where
+
+import           Control.Lens                   hiding ( element )
+import           Control.Lens.TH
 
 import           Control.Monad                  ( join )
 import           Control.Monad.Except           ( MonadError(..) )
@@ -21,14 +29,16 @@ import           Control.Monad.Reader           ( MonadReader(..)
 
 import           Data.Text                      ( Text )
 
-import           Level08.Types                  ( Conf
+import           Level08.Types                  ( Conf(..)
+                                                , Port (..)
+                                                , DBFilePath (..)
                                                 , FirstAppDB
                                                 )
 import           Level08.Types.Error            ( Error )
 
 data Env = Env
   { envLoggingFn :: Text -> App ()
-  , envConfig    :: Conf
+  , _envConfig   :: Conf
   , envDB        :: FirstAppDB
   }
 
@@ -46,6 +56,20 @@ type App = AppM Error
 
 runApp :: App a -> Env -> IO (Either Error a)
 runApp = runAppM
+
+$(makeLenses ''Env)
+$(makeLenses ''Conf)
+$(makeLenses ''Port)
+$(makeLenses ''DBFilePath)
+
+getDBFilePathE :: Env -> FilePath
+getDBFilePathE = view (envConfig . dbFilePath . getDBFilePath)
+
+getDBFilePathC :: Conf -> FilePath
+getDBFilePathC = view (dbFilePath . getDBFilePath)
+
+confPortToWaiE :: Env -> Int
+confPortToWaiE = fromIntegral . view (envConfig . port . getPort)
 
 instance Applicative (AppM e) where
   pure :: a -> AppM e a
